@@ -280,7 +280,7 @@ body {
 
 .robo-wrap {
   position: relative;
-  width: clamp(340px, 26vw, 340px);
+  width: clamp(310px, 26vw, 330px);
   aspect-ratio: 1/1;
   margin: 0 auto;
  
@@ -1719,7 +1719,7 @@ textarea:focus {
   gap: clamp(16px, 2.5vh, 30px);
   text-align: center;
   background-image: url('../img/robo-sorriso.png');
-  background-size: cover;
+  background-size: auto 100%;
 }
 
 .robo-selfie-wrap {
