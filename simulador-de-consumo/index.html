@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#C8102E">
+  <title>Simulador de Consumo Elétrico · ENDE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="css/style-ende.css">
+</head>
+
+<body>
+
+  <div class="app">
+    <!-- HEADER -->
+    <header class="topbar">
+      <div class="brand">
+          <div class="brand-mark"><img src="img/ende.png" width="40" height="40" style="border-radius:20%;" alt="ENDE"></div>
+        <div class="brand-text">
+          <h1>Simulador de Consumo</h1>
+          <p>ENDE · Literacia Energética</p>
+        </div>
+      </div>
+      <div class="tariff-pill">
+        <span class="led-dot"></span>
+        <span id="tariff-display-header">14,30 Kz/kWh</span>
+      </div>
+    </header>
+
+    <!-- PROGRESSO -->
+    <div class="progress-track">
+      <div class="progress-seg" data-seg="0"><span></span></div>
+      <div class="progress-seg" data-seg="1"><span></span></div>
+      <div class="progress-seg" data-seg="2"><span></span></div>
+    </div>
+
+    <!-- TABS -->
+    <nav class="tabs">
+      <div class="tab active" data-tab="0"><i class="fa-solid fa-plug"></i>Inventário</div>
+      <div class="tab" data-tab="1"><i class="fa-regular fa-clock"></i>Período de Uso</div>
+      <div class="tab" data-tab="2"><i class="fa-solid fa-chart-pie"></i>Resultados</div>
+    </nav>
+
+    <!-- CONTEÚDO -->
+    <main class="content">
+
+      <!-- PANEL 0 — INVENTÁRIO -->
+      <section class="panel active" id="panel-0">
+        <div class="section-head">
+          <div>
+            <div class="section-title"><i class="fa-solid fa-house-chimney"></i>Equipamentos da habitação</div>
+            <div class="section-hint">Adicione tudo o que está ligado à rede em sua casa</div>
+          </div>
+        </div>
+        <div id="device-list-inv" class="device-list"></div>
+        <div id="empty-inv" class="empty-state hidden">
+          <i class="fa-solid fa-plug-circle-xmark"></i>
+          <strong>Ainda não há equipamentos</strong>
+          <p>Toque em "Adicionar equipamento/aparelho" para começar a sua simulação.</p>
+        </div>
+        <button id="btn-open-sheet" class="add-launcher">
+          <i class="fa-solid fa-plus"></i> Adicionar equipamento/aparelho
+        </button>
+        <p style="margin-top:14px;font-size:.76rem;color:var(--graphite-2);display:flex;align-items:center;gap:6px;">
+          <i class="fa-solid fa-shield-halved"></i> Os dados ficam guardados apenas neste dispositivo.
+        </p>
+      </section>
+
+      <!-- PANEL 1 — HORAS -->
+      <section class="panel" id="panel-1">
+        <div class="section-head">
+          <div>
+            <div class="section-title"><i class="fa-regular fa-hourglass-half"></i>Horas de utilização diária</div>
+            <div class="section-hint">Quanto tempo por dia cada equipamento fica ligado</div>
+          </div>
+        </div>
+        <div id="device-list-hours" class="device-list"></div>
+        <div id="empty-hours" class="empty-state hidden">
+          <i class="fa-regular fa-clock"></i>
+          <strong>Sem equipamentos para configurar</strong>
+          <p>Volte ao Inventário e adicione pelo menos um equipamento.</p>
+        </div>
+      </section>
+
+      <!-- PANEL 2 — RESULTADOS -->
+      <section class="panel" id="panel-2">
+        <div class="section-head">
+          <div class="section-title"><i class="fa-solid fa-file-invoice"></i>Painel de resultados</div>
+        </div>
+
+        <div id="empty-results" class="empty-state hidden">
+          <i class="fa-solid fa-chart-pie"></i>
+          <strong>Ainda sem dados para calcular</strong>
+          <p>Adicione equipamentos e defina as horas de uso para ver a sua estimativa.</p>
+        </div>
+
+        <div id="results-wrap">
+          <div class="tariff-box">
+            <label for="tariff-input"><i class="fa-solid fa-coins" style="color:var(--red);margin-right:6px;"></i>Tarifa
+              considerada</label>
+            <div class="tariff-input-wrap">
+              <input type="number" id="tariff-input" step="0.01" min="0" value="14.30">
+              <span class="unit">Kz/kWh</span>
+            </div>
+            <p class="tariff-note">Valor médio de referência (pós-ajuste IRSEA, 2025). Substitua pelo tarifário exacto
+              da categoria do cliente.</p>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label"><i class="fa-solid fa-bolt"></i>Consumo diário</div>
+              <div class="stat-value"><span id="v-kwh-dia">0,00</span><span class="stat-unit">kWh</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label"><i class="fa-regular fa-calendar"></i>Consumo mensal</div>
+              <div class="stat-value"><span id="v-kwh-mes">0,00</span><span class="stat-unit">kWh</span></div>
+              <div class="stat-sub">estimativa para 30 dias</div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-label"><i class="fa-solid fa-sack-dollar"></i>Custo diário</div>
+              <div class="stat-value"><span id="v-kz-dia">0</span><span class="stat-unit">Kz</span></div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-label"><i class="fa-solid fa-file-invoice-dollar"></i>Custo mensal</div>
+              <div class="stat-value"><span id="v-kz-mes">0</span><span class="stat-unit">Kz</span></div>
+              <div class="stat-sub" id="top-consumer-sub">—</div>
+            </div>
+          </div>
+
+          <div class="breakdown">
+            <div class="section-title" style="margin-bottom:14px;"><i class="fa-solid fa-ranking-star"></i>Consumo por
+              equipamento</div>
+            <div id="breakdown-list"></div>
+          </div>
+
+          <!-- ANOMALIA -->
+          <div class="anomaly-box">
+            <div class="box-title"><i class="fa-solid fa-triangle-exclamation"></i>Simular esquecimento / desperdício
+            </div>
+            <div class="anomaly-controls">
+              <select id="anomaly-select">
+                <option value="">-- Seleccionar equipamento --</option>
+              </select>
+              <button id="btn-anomaly" class="btn btn-outline btn-sm">
+                <i class="fa-solid fa-clock"></i> Simular 24h ligado
+              </button>
+            </div>
+            <div id="anomaly-result" class="anomaly-result warn"></div>
+          </div>
+
+          <!-- CONSELHO -->
+          <div class="advice-box">
+            <div class="section-title" style="margin-bottom:12px;"><i class="fa-solid fa-user-check"></i>Conselho do
+              técnico ENDE</div>
+            <select id="preset-advice">
+              <option value="">-- Sugestões pré-definidas --</option>
+              <option>Substitua lâmpadas incandescentes por lâmpadas LED.</option>
+              <option>Desligue os aparelhos que ficam em modo stand-by.</option>
+              <option>Reduza a abertura desnecessária do frigorífico.</option>
+              <option>Utilize o ar condicionado apenas no período mais quente do dia.</option>
+              <option>Evite ligar vários electrodomésticos de alta potência ao mesmo tempo.</option>
+              <option>Aproveite a luz natural durante o dia antes de ligar a iluminação.</option>
+            </select>
+            <textarea id="advice-text"
+              placeholder="Escreva aqui uma recomendação personalizada para o cliente..."></textarea>
+          </div>
+
+          <div class="result-actions">
+            <button id="btn-print" class="btn btn-outline"><i class="fa-solid fa-print"></i> Imprimir relatório</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <span class="brand-credit">Powered By SOLUTEC AO for ENDE · Simulador v2.0</span>
+      <button id="btn-reset" class="btn btn-danger-outline btn-sm">
+        <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar simulador
+      </button>
+    </footer>
+  </div>
+
+  <!-- SHEET: adicionar equipamento/aparelho  -->
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet" id="add-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h3 id="sheet-title">Adicionar equipamento/aparelho</h3>
+      <button class="sheet-close" id="sheet-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sheet-mode">
+      <button class="mode-btn active" data-mode="catalogo">Catálogo</button>
+      <button class="mode-btn" data-mode="personalizado">Personalizado</button>
+    </div>
+    <div class="sheet-body">
+
+      <div id="mode-catalogo">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="catalog-search" placeholder="Procurar equipamento...">
+        </div>
+        <div class="cat-chips" id="cat-chips"></div>
+        <div id="catalog-results"></div>
+      </div>
+
+      <div id="mode-personalizado" class="hidden">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="custom-name">Nome do equipamento</label>
+            <input type="text" id="custom-name" placeholder="Ex: Bomba de piscina, Aquário...">
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="custom-watts">Potência (W)</label>
+              <input type="number" id="custom-watts" min="1" step="1" placeholder="Ex: 350">
+            </div>
+            <div class="form-field">
+              <label for="custom-qty">Quantidade</label>
+              <input type="number" id="custom-qty" min="1" step="1" value="1">
+            </div>
+          </div>
+          <button id="btn-add-custom" class="btn btn-primary btn-block">
+            <i class="fa-solid fa-plus"></i> Adicionar à lista
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/script-ende.js">
+  </script>
+
+</body>
+
+</html>
