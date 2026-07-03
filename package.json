@@ -1,0 +1,20 @@
+{
+  "name": "ende-ctrl",
+  "version": "1.0.0",
+  "description": "Simulador de Consumo Elétrico · ENDE",
+  "private": true,
+  "scripts": {
+    "dev": "npx http-server -p 3000",
+    "build": "echo 'Static site - no build required'"
+  },
+  "keywords": [
+    "analytics",
+    "vercel",
+    "ende"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
