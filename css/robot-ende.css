@@ -280,7 +280,7 @@ body {
 
 .robo-wrap {
   position: relative;
-  width: clamp(310px, 26vw, 330px);
+  width: clamp(300px, 26vw, 320px);
   aspect-ratio: 1/1;
   margin: 0 auto;
  
