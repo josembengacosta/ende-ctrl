@@ -68,7 +68,7 @@
                 // repõe sempre a pose de sorriso e a legenda inicial ao entrar neste ecrã
                 const img = document.getElementById('robo-img-selfie');
                 img.classList.remove('hidden');
-                img.src = 'img/robo-sorriso.png';
+                img.src = 'img/robo-sorriso-1.png';
                 document.getElementById('robo-placeholder-selfie').classList.add('hidden');
                 document.getElementById('selfie-legenda').textContent = 'Sorria! Tire uma fotografia com o robô da ENDE para recordar a FILDA 2026.';
                 document.getElementById('btn-selfie-pronto').classList.remove('hidden');
