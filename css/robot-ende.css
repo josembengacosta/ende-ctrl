@@ -1145,59 +1145,17 @@ body {
   background: var(--orange);
 }
 
-.tariff-box {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: var(--ice);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-m);
-  padding: 13px 15px;
-  margin-bottom: 20px;
-}
-
-.tariff-box label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--slate);
-  flex: 1;
-  min-width: 170px;
-}
-
-.tariff-box .tariff-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tariff-box input {
-  width: 88px;
-  padding: 8px 10px;
-  border: 1.5px solid var(--line-soft);
-  border-radius: var(--r-s);
-  font-family: "IBM Plex Mono", monospace;
-  font-weight: 700;
-  font-size: 0.86rem;
-  text-align: right;
-}
-
-.tariff-box input:focus {
-  border-color: var(--orange);
-  outline: none;
-}
-
-.tariff-box .unit {
-  font-size: 0.76rem;
-  color: var(--slate-light);
-  font-weight: 700;
-}
-
-.tariff-note {
-  font-size: 0.7rem;
-  color: var(--slate-light);
-  width: 100%;
-}
+.tariff-box{display:flex;flex-direction:column;gap:12px;flex-wrap:wrap;background:var(--ice);border:1px solid var(--line-soft);border-radius:var(--r-m);padding:15px;margin-bottom:20px;}
+.tariff-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.tariff-row label{font-size:.82rem;font-weight:700;color:var(--slate);flex:1;min-width:190px;display:flex;align-items:center;}
+.tariff-row select{flex:none;min-width:220px;padding:9px 11px;border:1.5px solid var(--line-soft);border-radius:var(--r-s);font-family:inherit;font-size:.85rem;background:var(--white);color:var(--ink);}
+.tariff-row select:focus{border-color:var(--orange);outline:none;}
+.tag-provisorio{background:var(--amber);color:var(--blue-900);margin-left:7px;}
+.tariff-box .tariff-input-wrap{display:flex;align-items:center;gap:6px;}
+.tariff-box .tariff-input-wrap input{width:88px;padding:8px 10px;border:1.5px solid var(--line-soft);border-radius:var(--r-s);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:.86rem;text-align:right;}
+.tariff-box .tariff-input-wrap input:focus{border-color:var(--orange);outline:none;}
+.tariff-box .unit{font-size:.76rem;color:var(--slate-light);font-weight:700;}
+.tariff-note{font-size:.7rem;color:var(--slate-light);width:100%;margin:0;}
 
 .anomaly-box {
   background: var(--white);
@@ -1801,8 +1759,8 @@ textarea:focus {
 
 .btn-pronto {
   background: rgba(255, 255, 255, 0.14);
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  color: var(--white);
+  border: 1.5px solid var(--red-darker);
+  color: var(--red);
 }
 
 .btn-pronto:hover {
