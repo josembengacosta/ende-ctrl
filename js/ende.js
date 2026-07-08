@@ -53,7 +53,7 @@ function irParaBoasVindas(){
   mostrarTela('boas-vindas');
   // o texto do robô é "escrito" de novo sempre que o totem volta ao início,
   // para parecer que está a cumprimentar cada novo visitante
-  escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 88);
+  escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 50);
   tocarLoopBoasVindas();
 }
 
@@ -156,7 +156,7 @@ btnMudo.addEventListener('click', function(){
 /* ============================================================
    TELA 1 — texto do robô (efeito de escrita, sincronizado com o áudio)
    ============================================================ */
-const TEXTO_BOAS_VINDAS = 'Olá! Bem-vindo à FILDA 2026. Sou o assistente de Literacia Elétrica da ENDE. Queres testar o nosso simulador inteligente ou aprender a poupar energia?';
+const TEXTO_BOAS_VINDAS = 'Olá! Bem-vindo à FILDA 2026. Sou o assistente de Literacia Energética da ENDE. Queres testar o nosso simulador inteligente ou aprender a poupar energia?';
 
 function escreverTexto(el, texto, velocidade){
   el.textContent = '';
@@ -807,7 +807,7 @@ if(typeof state.taxaFixaTrif === 'number') taxaFixaTrifInput.value = state.taxaF
 atualizarResumoTarifario();
 adviceText.value = state.advice || '';
 renderAll();
-escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 88);
+escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 50);
 tocarLoopBoasVindas(); // arranca o loop logo na primeira visita (fica à espera do 1º toque se o navegador bloquear o autoplay)
 
 })();

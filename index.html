@@ -9,12 +9,11 @@
     <meta name="author" content="José Mbenga da Costa - Solutec AO ">
 
     <title>ENDE — Assistente de Literacia Enérgetica · FILDA 2026 </title>
-    <link rel="shortcut icon" href="img/ende.png" type="image/x-icon">
+    <link rel="shortcut icon" href="img/ende-white.png" type="image/x-icon">
     <!-- ===================== CDNs obrigatórios ===================== -->
     <!-- Bootstrap 5 (grelha e utilitários de layout) -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome (ícones) -->
-    <link rel="stylesheet" href="css/font/">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <!-- Google Fonts: Sora (títulos/CTA) + Inter (interface) + IBM Plex Mono (leituras digitais) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,7 +82,8 @@
 
             <header class="sim-header">
                 <div class="brand">
-                    <div class="brand-mark"><img src="img/ende-white.png" width="40" height="40" style="border-radius:20%;" alt="ENDE"></div>
+                    <div class="brand-mark"><img src="img/ende-white.png" width="40" height="40"
+                            style="border-radius:20%;" alt="ENDE"></div>
                     <div>
                         <h1>Simulador de Consumo - Nossa Energia</h1>
                         <p>ENDE · Literacia Enérgetica</p>
@@ -276,17 +276,17 @@
                     style="margin-top:14px;font-size:.76rem;color:var(--graphite-2);display:flex;align-items:center;gap:6px;">
                     <i class="fa-solid fa-shield-halved"></i> Os dados ficam guardados apenas neste dispositivo.
                 </p>
-                 <div class="border-top">
-                <!-- FOOTER -->
-                <footer class="footer d-flex justify-content-between py-7 mt-3">
-                    <span class="brand-credit">Powered By SOLUTEC AO for ENDE · Simulador v2.0</span>
-                    <button id="btn-reset" class="btn btn-danger-outline btn-sm">
-                        <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar simulador
-                    </button>
-                </footer>
+                <div class="border-top">
+                    <!-- FOOTER -->
+                    <footer class="footer d-flex justify-content-between py-7 mt-3">
+                        <span class="brand-credit">Powered By SOLUTEC AO for ENDE · Simulador v2.0</span>
+                        <button id="btn-reset" class="btn btn-danger-outline btn-sm">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar simulador
+                        </button>
+                    </footer>
+                </div>
             </div>
-            </div>
-           
+
         </div>
     </section>
 
@@ -298,8 +298,7 @@
         <div class="robo-selfie-wrap">
             <img src="robo-sorriso.png" alt="Robô da ENDE a sorrir" class="robo-selfie-img" id="robo-img-selfie"
                 onerror="handleRoboError(this,'robo-placeholder-selfie')">
-            <div class=" hidden" id="robo-placeholder-selfie"><i
-                    class=""></i></div>
+            <div class=" hidden" id="robo-placeholder-selfie"><i class=""></i></div>
         </div>
         <p id="selfie-legenda">Sorria! Tire uma fotografia com o robô da ENDE para recordar a FILDA 2026.</p>
         <button class="btn-falar btn-pronto" id="btn-selfie-pronto"><i class="fa-solid fa-camera"></i> Pronto!</button>
