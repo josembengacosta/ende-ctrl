@@ -79,7 +79,7 @@ function irParaSelfie(){
   document.getElementById('btn-selfie-pronto').classList.remove('hidden');
   // locução "Sorria..." toca uma única vez, só ao entrar neste ecrã —
   // se o visitante voltar aqui por ter clicado "Ainda não", esta função
-  // não é chamada de novo, por isso o áudio não se repete (como pedido)
+  // não é chamada de novo, por isso o áudio não se repete
   if(!mudo){ audioSorria.currentTime = 0; audioSorria.play().catch(()=>{}); }
   iniciarTemporizadorSelfie();
 }
@@ -224,7 +224,7 @@ const CATEGORIAS = {
    Fórmula geral confirmada: F = (TaxaFixa × PC + TarifaKwh × W) × 1,14
    PC = Potência Contratada (kVA) · W = consumo mensal (kWh)
    "fixaEditavel: true" no BT-Trif porque a taxa fixa ainda não foi
-   confirmada — fica como campo editável na interface até termos o valor certo.
+   confirmada — fica como campo editável na interface até termos o valor certo (Por parte da ENDE).
    ============================================================ */
 const TARIFARIOS = {
   'bt-mono':   { label:'BT-Mono (Monofásica)',            short:'BT-Mono',   taxaFixa:117,    tarifaKwh:14.16, fixaEditavel:false },
@@ -790,7 +790,7 @@ function perguntarSeTirouFoto(){
       agradecimentoFallbackId = setTimeout(voltarAoInicio, 8000);
     }else{
       // NÃO — devolve mais 30 segundos de sorriso para repetir a fotografia,
-      // sem repetir a locução "Sorria..." (como pedido)
+      // sem repetir a locução "Sorria..." 
       iniciarTemporizadorSelfie();
     }
   });
