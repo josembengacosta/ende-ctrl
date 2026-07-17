@@ -114,7 +114,7 @@ function falar(texto, aoTerminar){
   const utter = new SpeechSynthesisUtterance(texto);
   utter.lang = 'pt-PT';
   if(vozPortuguesa) utter.voice = vozPortuguesa;
-  utter.rate = 1.50;
+  utter.rate = 0.98;
   utter.pitch = 1.02;
   if(aoTerminar){ utter.onend = aoTerminar; utter.onerror = aoTerminar; }
   window.speechSynthesis.speak(utter);
