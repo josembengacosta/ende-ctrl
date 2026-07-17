@@ -1,4 +1,3 @@
-
 /* Fallback visual: se "robo-*.png" ainda não existir, mostra um ícone em vez de uma imagem partida.
    Basta substituir os ficheiros PNG na mesma pasta do HTML — nada no código precisa de mudar. */
 function handleRoboError(img, placeholderId){
@@ -45,15 +44,13 @@ function mostrarTela(nome){
 /* ---------- TRANSIÇÃO: qualquer ecrã → TELA 1 (Boas-vindas) ---------- */
 function irParaBoasVindas(){
   // pára qualquer locução e temporizador pendente de outros ecrãs antes de trocar
-  audioSorria.pause();
-  audioAgradecimento.pause();
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
   clearTimeout(idleTimeoutId);
   clearTimeout(selfieTimeoutId);
-  clearTimeout(agradecimentoFallbackId);
   mostrarTela('boas-vindas');
   // o texto do robô é "escrito" de novo sempre que o totem volta ao início,
   // para parecer que está a cumprimentar cada novo visitante
-  escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 50);
+  escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 26);
   tocarLoopBoasVindas();
 }
 
@@ -73,75 +70,96 @@ function irParaSelfie(){
   // repõe sempre a pose de sorriso e a legenda inicial ao entrar neste ecrã
   const img = document.getElementById('robo-img-selfie');
   img.classList.remove('hidden');
-  img.src = 'robo-sorriso.png';
+  img.src = '';
   document.getElementById('robo-placeholder-selfie').classList.add('hidden');
-  document.getElementById('selfie-legenda').textContent = 'Sorria! Tire uma fotografia com o robô da ENDE para recordar a FILDA 2026.';
+  document.getElementById('selfie-legenda').textContent = TEXTO_SORRIA;
   document.getElementById('btn-selfie-pronto').classList.remove('hidden');
-  // locução "Sorria..." toca uma única vez, só ao entrar neste ecrã —
+  // a locução "Sorria..." toca uma única vez, só ao entrar neste ecrã —
   // se o visitante voltar aqui por ter clicado "Ainda não", esta função
-  // não é chamada de novo, por isso o áudio não se repete
-  if(!mudo){ audioSorria.currentTime = 0; audioSorria.play().catch(()=>{}); }
+  // não é chamada de novo, por isso não se repete (como pedido)
+  falar(TEXTO_SORRIA);
   iniciarTemporizadorSelfie();
 }
 
 /* ============================================================
-   LOCUÇÕES GRAVADAS (áudio humano, substitui a Web Speech API)
-   3 ficheiros, cada um tratado de forma diferente:
-   - audio-boas-vindas: toca em loop infinito na Tela 1, com uma pequena
-     pausa entre repetições, até o visitante tocar em "Iniciar Simulação"
-   - audio-sorria: toca uma única vez ao entrar na Tela 3
-   - audio-agradecimento: toca uma única vez quando o visitante confirma
-     "Sim" (já tirou a foto), sincronizado com a troca de pose do robô
+   VOZ DO NAVEGADOR (Web Speech API) — usada em todos os ecrãs:
+   - Tela 1: lê o texto de boas-vindas em loop, com pausa entre repetições,
+     até o visitante tocar em "Iniciar Simulação"
+   - Tela 2 (aba Resultados): lê um resumo dos valores dos cartões assim
+     que o visitante chega a esta aba
+   - Tela 3: lê "Sorria..." ao entrar, e o agradecimento quando o
+     visitante confirma que já tirou a foto
    ============================================================ */
-const audioBoasVindas = document.getElementById('audio-boas-vindas');
-const audioSorria = document.getElementById('audio-sorria');
-const audioAgradecimento = document.getElementById('audio-agradecimento');
+let mudo = false; // controlado pelo botão "Som ligado/Som desligado"
+
+// escolhe a melhor voz portuguesa disponível no dispositivo (Portugal > Brasil > qualquer "pt")
+let vozPortuguesa = null;
+function carregarVozPortuguesa(){
+  if(!('speechSynthesis' in window)) return null;
+  const vozes = window.speechSynthesis.getVoices();
+  return vozes.find(v=> v.lang === 'pt-PT')
+      || vozes.find(v=> (v.lang||'').toLowerCase().startsWith('pt-pt'))
+      || vozes.find(v=> v.lang === 'pt-BR')
+      || vozes.find(v=> (v.lang||'').toLowerCase().startsWith('pt'))
+      || null;
+}
+if('speechSynthesis' in window){
+  vozPortuguesa = carregarVozPortuguesa();
+  window.speechSynthesis.onvoiceschanged = ()=>{ vozPortuguesa = carregarVozPortuguesa(); };
+}
+
+// fala um texto uma única vez; "aoTerminar" (opcional) corre quando a fala acaba (ou falha/está muda)
+function falar(texto, aoTerminar){
+  if(mudo || !('speechSynthesis' in window)){ if(aoTerminar) aoTerminar(); return; }
+  const utter = new SpeechSynthesisUtterance(texto);
+  utter.lang = 'pt-PT';
+  if(vozPortuguesa) utter.voice = vozPortuguesa;
+  utter.rate = 1.50;
+  utter.pitch = 1.02;
+  if(aoTerminar){ utter.onend = aoTerminar; utter.onerror = aoTerminar; }
+  window.speechSynthesis.speak(utter);
+}
 
 const GAP_LOOP_BOAS_VINDAS_MS = 4000; // "alguns tempinho" de silêncio entre repetições do loop
-let mudo = false;                      // controlado pelo botão "Som ligado/Som desligado"
 let loopBoasVindasTimeoutId = null;
-let primeiroGestoPendente = false;     // true se o autoplay foi bloqueado e falta um toque do utilizador
-
-audioBoasVindas.onended = function(){
-  loopBoasVindasTimeoutId = setTimeout(()=>{
-    if(estadoAtual === 'boas-vindas' && !mudo) audioBoasVindas.play().catch(()=>{});
-  }, GAP_LOOP_BOAS_VINDAS_MS);
-};
 
 function tocarLoopBoasVindas(){
   clearTimeout(loopBoasVindasTimeoutId);
-  if(mudo) return;
-  audioBoasVindas.currentTime = 0;
-  const promessa = audioBoasVindas.play();
-  if(promessa && promessa.catch){
-    promessa.catch(()=>{
-      // a maioria dos navegadores bloqueia áudio com som antes do 1º toque do utilizador;
-      // fica à espera do primeiro toque no ecrã para arrancar o loop automaticamente
-      primeiroGestoPendente = true;
-    });
-  }
+  if(mudo || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  falar(TEXTO_BOAS_VINDAS, ()=>{
+    loopBoasVindasTimeoutId = setTimeout(()=>{
+      if(estadoAtual === 'boas-vindas') tocarLoopBoasVindas();
+    }, GAP_LOOP_BOAS_VINDAS_MS);
+  });
 }
 function pararLoopBoasVindas(){
   clearTimeout(loopBoasVindasTimeoutId);
-  audioBoasVindas.pause();
-}
-// assim que houver o primeiro toque em qualquer parte do ecrã, destrava o autoplay do totem
-document.addEventListener('touchstart', desbloquearAutoplay, {passive:true, once:true});
-document.addEventListener('click', desbloquearAutoplay, {once:true});
-function desbloquearAutoplay(){
-  if(primeiroGestoPendente && estadoAtual === 'boas-vindas' && !mudo){
-    audioBoasVindas.play().catch(()=>{});
-  }
-  primeiroGestoPendente = false;
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
 
-/* Botão "Som ligado / Som desligado" — silencia ou retoma o loop da Tela 1 */
+/* Lê um resumo dos cartões da aba Resultados — chamado quando o visitante
+   chega a essa aba (ver switchTab). Só os números-resumo, sem os detalhes
+   do gráfico, anomalia ou conselho do técnico. */
+function lerResumoResultados(){
+  if(state.devices.length === 0) return; // nada para ler no estado vazio
+  const t = totals();
+  const texto = `Aqui estão os seus resultados. Consumo diário de ${fmt(t.kwhDia)} quilowatts-hora. `
+    + `Consumo mensal de ${fmt(t.kwhMes)} quilowatts-hora. `
+    + `Custo diário de ${fmt(t.kzDia,0)} kwanzas. `
+    + `Custo mensal de ${fmt(t.kzMes,0)} kwanzas.`;
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  falar(texto);
+}
+
+/* Botão "Som ligado / Som desligado" — silencia ou retoma a voz em qualquer ecrã */
 const btnMudo = document.getElementById('btn-mudo');
 const btnMudoLabel = document.getElementById('btn-mudo-label');
 btnMudo.addEventListener('click', function(){
   mudo = !mudo;
   if(mudo){
-    pararLoopBoasVindas();
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    clearTimeout(loopBoasVindasTimeoutId);
     btnMudo.querySelector('i').className = 'fa-solid fa-volume-xmark';
     btnMudoLabel.textContent = 'Som desligado';
     btnMudo.setAttribute('aria-pressed','true');
@@ -149,7 +167,7 @@ btnMudo.addEventListener('click', function(){
     btnMudo.querySelector('i').className = 'fa-solid fa-volume-high';
     btnMudoLabel.textContent = 'Som ligado';
     btnMudo.setAttribute('aria-pressed','false');
-    tocarLoopBoasVindas();
+    if(estadoAtual === 'boas-vindas') tocarLoopBoasVindas();
   }
 });
 
@@ -157,6 +175,8 @@ btnMudo.addEventListener('click', function(){
    TELA 1 — texto do robô (efeito de escrita, sincronizado com o áudio)
    ============================================================ */
 const TEXTO_BOAS_VINDAS = 'Olá! Bem-vindo à FILDA 2026. Sou o assistente de Literacia Energética da ENDE. Queres testar o nosso simulador inteligente ou aprender a poupar energia?';
+const TEXTO_SORRIA = 'Sorria! Tire uma fotografia com o robô da ENDE para recordar a FILDA 2026.';
+const TEXTO_AGRADECIMENTO = 'A ENDE agradece a sua visita! Ajude-nos a iluminar Angola com consumo consciente.';
 
 function escreverTexto(el, texto, velocidade){
   el.textContent = '';
@@ -220,23 +240,48 @@ const CATEGORIAS = {
 };
 
 /* ============================================================
-   TARIFÁRIOS REAIS DA ENDE (Baixa/Média Tensão)
-   Fórmula geral confirmada: F = (TaxaFixa × PC + TarifaKwh × W) × 1,14
-   PC = Potência Contratada (kVA) · W = consumo mensal (kWh)
-   "fixaEditavel: true" no BT-Trif porque a taxa fixa ainda não foi
-   confirmada — fica como campo editável na interface até termos o valor certo (Por parte da ENDE).
+   TARIFÁRIOS REAIS DA ENDE (Baixa/Média Tensão) — confirmados pelo
+   técnico da ENDE. Nomes oficiais atualizados (só mudaram os nomes,
+   os valores de BT-TI e MT-TCS e Indústria mantêm-se os mesmos de
+   antes, quando ainda se chamavam BT-TS e MT-Comércio e Indústria).
+   Fórmula geral: Custo = (TaxaFixa × Pc) + (Tarifa × Pi) + 14%
+   Pc = Potência Contratada (kVA) · Pi = Potência/energia Instalada (kWh),
+   diária OU mensal consoante quem chama a função (ver calcularCustoENDE).
    ============================================================ */
 const TARIFARIOS = {
-  'bt-mono':   { label:'BT-Mono (Monofásica)',            short:'BT-Mono',   taxaFixa:117,    tarifaKwh:14.16, fixaEditavel:false },
-  'bt-trif':   { label:'BT-Trif (Trifásica)',             short:'BT-Trif',   taxaFixa:null,   tarifaKwh:19.16, fixaEditavel:true  },
-  'bt-ts':     { label:'BT-TS',                            short:'BT-TS',     taxaFixa:130,    tarifaKwh:19.17, fixaEditavel:false },
-  'mt-comind': { label:'MT-Comércio e Indústria',          short:'MT-Com/Ind',taxaFixa:239.20, tarifaKwh:14.99, fixaEditavel:false }
+  'bt-mono':   { label:'BT-Monofásico',           short:'BT-Mono',    taxaFixa:117,    tarifaKwh:14.16 },
+  'bt-trif':   { label:'BT-Doméstico Trifásico',  short:'BT-Trif',    taxaFixa:117,    tarifaKwh:19.16 },
+  'bt-ti':     { label:'BT-TI',                    short:'BT-TI',      taxaFixa:130,    tarifaKwh:19.17 },
+  'mt-tcsind': { label:'MT-TCS e Indústria',       short:'MT-TCS/Ind', taxaFixa:239.20, tarifaKwh:14.99 },
+  'grandes':   { label:'Grandes Clientes',         short:'Grandes',    taxaFixa:0,      tarifaKwh:0,     semDados:true }
 };
+
+/**
+ * Calcula o custo de energia segundo as fórmulas oficiais da ENDE.
+ * Função pura (não lê nem escreve em "state") para poder ser reutilizada
+ * tanto para o custo diário como para o custo mensal — quem chama decide
+ * se "pi" é a potência/energia instalada diária ou mensal.
+ * @param {string} categoria - chave da categoria tarifária (ver TARIFARIOS)
+ * @param {number} pc - Potência Contratada, em kVA
+ * @param {number} pi - Potência/energia Instalada, em kWh (diária ou mensal)
+ * @param {number} tarifa - tarifa a aplicar, em Kz/kWh
+ * @returns {number} custo total já com 14% de imposto, arredondado a 2 casas decimais
+ */
+function calcularCustoENDE(categoria, pc, pi, tarifa){
+  const t = TARIFARIOS[categoria] || TARIFARIOS['bt-mono'];
+  if(t.semDados) return 0; // "Grandes Clientes" ainda não tem tarifário público confirmado
+  const subtotal = (t.taxaFixa * pc) + (tarifa * pi);
+  const comImposto = subtotal * 1.14;
+  return Math.round(comImposto * 100) / 100;
+}
+
 
 const CATALOGO = [
   { nome:'Lâmpada LED 9W',                 potencia:9,    categoria:'iluminacao',   horasSugeridas:6  },
+  { nome:'Lâmpada LED 10W',                potencia:10,   categoria:'iluminacao',   horasSugeridas:6  },
   { nome:'Lâmpada LED 12W',                potencia:12,   categoria:'iluminacao',   horasSugeridas:6  },
   { nome:'Lâmpada Incandescente 60W',      potencia:60,   categoria:'iluminacao',   horasSugeridas:6  },
+  { nome:'Lâmpada Incandescente 100W',     potencia:100,  categoria:'iluminacao',   horasSugeridas:6  },
   { nome:'Lâmpada Fluorescente Compacta',  potencia:15,   categoria:'iluminacao',   horasSugeridas:6  },
   { nome:'Candeeiro de Mesa',              potencia:40,   categoria:'iluminacao',   horasSugeridas:3  },
   { nome:'Frigorífico 150L',               potencia:120,  categoria:'refrigeracao', horasSugeridas:24 },
@@ -246,9 +291,14 @@ const CATALOGO = [
   { nome:'Geleira Pequena / Mini-bar',     potencia:90,   categoria:'refrigeracao', horasSugeridas:24 },
   { nome:'Ventoinha de Mesa',              potencia:55,   categoria:'climatizacao', horasSugeridas:6  },
   { nome:'Ventilador de Tecto',            potencia:75,   categoria:'climatizacao', horasSugeridas:6  },
-  { nome:'Ar Condicionado 9000 BTU',       potencia:900,  categoria:'climatizacao', horasSugeridas:6  },
-  { nome:'Ar Condicionado 12000 BTU',      potencia:1200, categoria:'climatizacao', horasSugeridas:6  },
-  { nome:'Ar Condicionado 18000 BTU',      potencia:1800, categoria:'climatizacao', horasSugeridas:5  },
+  { nome:'Ar Condicionado 9000 BTU (Convencional)',  potencia:865,  categoria:'climatizacao', horasSugeridas:6 },
+  { nome:'Ar Condicionado 9000 BTU (Inverter)',      potencia:621,  categoria:'climatizacao', horasSugeridas:6 },
+  { nome:'Ar Condicionado 12000 BTU (Convencional)', potencia:1153, categoria:'climatizacao', horasSugeridas:6 },
+  { nome:'Ar Condicionado 12000 BTU (Inverter)',     potencia:808,  categoria:'climatizacao', horasSugeridas:6 },
+  { nome:'Ar Condicionado 18000 BTU (Convencional)', potencia:1702, categoria:'climatizacao', horasSugeridas:5 },
+  { nome:'Ar Condicionado 18000 BTU (Inverter)',     potencia:1241, categoria:'climatizacao', horasSugeridas:5 },
+  { nome:'Ar Condicionado 24000 BTU (Convencional)', potencia:2233, categoria:'climatizacao', horasSugeridas:5 },
+  { nome:'Ar Condicionado 24000 BTU (Inverter)',     potencia:1716, categoria:'climatizacao', horasSugeridas:5 },
   { nome:'Aquecedor Eléctrico',            potencia:1500, categoria:'climatizacao', horasSugeridas:2  },
   { nome:'Micro-ondas',                    potencia:1000, categoria:'cozinha',      horasSugeridas:0.5},
   { nome:'Fogão / Placa de Indução',       potencia:2000, categoria:'cozinha',      horasSugeridas:1  },
@@ -259,6 +309,7 @@ const CATALOGO = [
   { nome:'Máquina de Lavar Roupa',         potencia:500,  categoria:'lavandaria',   horasSugeridas:1  },
   { nome:'Ferro de Engomar',               potencia:1200, categoria:'lavandaria',   horasSugeridas:0.7},
   { nome:'Televisor LED 32"',              potencia:60,   categoria:'eletronica',   horasSugeridas:4  },
+  { nome:'Televisor Plasma 42"',           potencia:250,  categoria:'eletronica',   horasSugeridas:4  },
   { nome:'Televisor LED 43"',              potencia:90,   categoria:'eletronica',   horasSugeridas:4  },
   { nome:'Televisor LED 55"',              potencia:120,  categoria:'eletronica',   horasSugeridas:4  },
   { nome:'Descodificador / TV Box',        potencia:15,   categoria:'eletronica',   horasSugeridas:5  },
@@ -274,7 +325,7 @@ const CATALOGO = [
   { nome:'Câmara de Vigilância',           potencia:10,   categoria:'bombagem',     horasSugeridas:24 }
 ];
 
-let state = { devices: [], categoria: 'bt-mono', pc: 6.6, taxaFixaTrif: null, advice: '' };
+let state = { devices: [], categoria: 'bt-mono', pc: 6.6, tarifaOverride: null, advice: '' };
 let currentTab = 0;
 let sheetMode = 'catalogo';
 let activeCategoryFilter = null;
@@ -295,11 +346,9 @@ const catChips = $('cat-chips');
 const catalogSearch = $('catalog-search');
 const categoriaSelect = $('categoria-select');
 const pcInput = $('pc-input');
-const taxaFixaTrifRow = $('taxa-fixa-trif-row');
-const taxaFixaTrifInput = $('taxa-fixa-trif-input');
-const tarifaKwhAplicadaEl = $('tarifa-kwh-aplicada');
+const tarifaInput = $('tarifa-input');
 const taxaFixaAplicadaEl = $('taxa-fixa-aplicada');
-const avisoTrif = $('aviso-trif');
+const avisoGrandes = $('aviso-grandes');
 const tariffHeader = $('tariff-display-header');
 const anomalySelect = $('anomaly-select');
 const anomalyResult = $('anomaly-result');
@@ -320,7 +369,7 @@ function load(){
   }catch(e){}
   // primeiro visitante do dia / sem dados guardados: exemplo mínimo para demonstrar o simulador
   state.devices = [
-    mkDevice({ nome:'Lâmpada LED 12W', potencia:12, categoria:'iluminacao' }, 6, 6),
+    mkDevice({ nome:'Lâmpada LED 10W', potencia:10, categoria:'iluminacao' }, 6, 6),
     mkDevice({ nome:'Frigorífico 200L', potencia:200, categoria:'refrigeracao' }, 1, 24)
   ];
 }
@@ -331,7 +380,7 @@ function mkDevice(base, qty, horas){
 /* Prepara o totem para o visitante seguinte: limpa a lista e repõe os valores por omissão */
 function limparSimuladorParaProximoVisitante(){
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
-  state = { devices:[], categoria:'bt-mono', pc:6.6, taxaFixaTrif:null, advice:'' };
+  state = { devices:[], categoria:'bt-mono', pc:6.6, tarifaOverride:null, advice:'' };
   load();
   qrGerado = false; // o QR é estático, mas garante que o gráfico/lista voltam a desenhar-se do zero
 }
@@ -344,13 +393,13 @@ function fmt(n, dec){
 }
 
 /* ============================================================
-   FÓRMULA OFICIAL DE CÁLCULO — fatura real da ENDE (Baixa/Média Tensão):
+   FÓRMULA OFICIAL DE CÁLCULO — confirmada pelo técnico da ENDE:
    Consumo diário (kWh) = Potência (W) × Quantidade × Horas/dia ÷ 1000
    Consumo mensal (kWh)  = Consumo diário × 30
-   Custo diário (Kz)     = Consumo diário × Tarifa/kWh  (só energia — a
-                            taxa fixa é uma cobrança mensal, não diária)
-   Custo mensal (Kz)     = (TaxaFixa × PC + Tarifa/kWh × Consumo mensal) × 1,14
-   PC = Potência Contratada (kVA) · 1,14 = imposto de 14%
+   Custo diário (Kz)     = calcularCustoENDE(categoria, Pc, Pi_diário, tarifa)
+   Custo mensal (Kz)      = calcularCustoENDE(categoria, Pc, Pi_mensal, tarifa)
+   — é a MESMA fórmula (TaxaFixa × Pc + Tarifa × Pi) × 1,14 nos dois casos;
+   só muda se "Pi" é o consumo diário ou mensal, consoante pedido pelo técnico.
    ============================================================ */
 function dailyKwh(d){
   return (d.potencia * d.quantidade * d.horas) / 1000;
@@ -358,18 +407,19 @@ function dailyKwh(d){
 function tarifarioAtual(){
   return TARIFARIOS[state.categoria] || TARIFARIOS['bt-mono'];
 }
-function taxaFixaAtual(){
+// tarifa efetivamente aplicada: o valor oficial da categoria, a não ser que
+// o utilizador a tenha substituído manualmente no campo "Tarifa (Kz/kWh)"
+function tarifaAtual(){
   const t = tarifarioAtual();
-  if(t.fixaEditavel) return (typeof state.taxaFixaTrif === 'number' && !isNaN(state.taxaFixaTrif)) ? state.taxaFixaTrif : 0;
-  return t.taxaFixa;
+  if(t.semDados) return 0;
+  return (typeof state.tarifaOverride === 'number' && !isNaN(state.tarifaOverride)) ? state.tarifaOverride : t.tarifaKwh;
 }
 function totals(){
   const kwhDia = state.devices.reduce((s,d)=> s + dailyKwh(d), 0);
   const kwhMes = kwhDia * 30;
-  const t = tarifarioAtual();
-  const taxaFixa = taxaFixaAtual();
-  const kzDia = kwhDia * t.tarifaKwh;
-  const kzMes = (taxaFixa * state.pc + t.tarifaKwh * kwhMes) * 1.14;
+  const tarifa = tarifaAtual();
+  const kzDia = calcularCustoENDE(state.categoria, state.pc, kwhDia, tarifa);
+  const kzMes = calcularCustoENDE(state.categoria, state.pc, kwhMes, tarifa);
   return { kwhDia, kwhMes, kzDia, kzMes };
 }
 
@@ -479,7 +529,7 @@ function renderResults(){
   $('breakdown-list').innerHTML = sorted.map((d,i)=>{
     const kwh = dailyKwh(d);
     const pct = maxKwh > 0 ? Math.max(4, (kwh/maxKwh)*100) : 4;
-    const cost = kwh * tarifarioAtual().tarifaKwh;
+    const cost = kwh * tarifaAtual();
     return `<div class="bk-row">
       <div class="bk-top"><div class="bk-name"><span class="bk-rank">${i+1}</span><span>${escapeHtml(d.nome)}</span></div>
       <div class="bk-val">${fmt(kwh)} kWh/d · ${fmt(cost,0)} Kz/d</div></div>
@@ -554,7 +604,10 @@ function switchTab(idx){
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', +t.getAttribute('data-tab')===idx));
   document.querySelectorAll('.panel').forEach((p,i)=> p.classList.toggle('active', i===idx));
   updateProgress();
-  if(idx === 2) gerarQRInstagram(); // só gera o QR quando o visitante chega aos Resultados
+  if(idx === 2){
+    gerarQRInstagram(); // só gera o QR quando o visitante chega aos Resultados
+    lerResumoResultados();
+  }
 }
 document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=> switchTab(+t.getAttribute('data-tab'))));
 
@@ -632,6 +685,73 @@ function renderCatalog(){
 }
 catalogSearch.addEventListener('input', renderCatalog);
 
+/* ============================================================
+   CONVERSOR DE UNIDADES → WATTS (formulário "Personalizado")
+   Muitos aparelhos em Angola não vêm etiquetados em Watts:
+   - Ar Condicionado: normalmente só tem BTU/h (capacidade de arrefecimento,
+     que NÃO é a potência elétrica — é preciso dividir pelo COP do aparelho)
+   - Bombas de água, geleiras antigas: às vezes só têm Amperes + Volts
+   - Bombas, motores: às vezes vêm em cv (cavalo-vapor)
+   Não existe um COP fixo (depende de marca/modelo/tecnologia), por isso
+   usamos aqui um COP médio representativo — o campo "Potência (W)" fica
+   sempre editável a seguir, para quem souber o valor exacto do aparelho.
+   ============================================================ */
+const COP_MEDIO = { convencional: 3.0, inverter: 4.2 };
+
+function converterBtuParaWatts(btu, tipo){
+  const capacidadeTermica = btu * 0.293071; // 1 BTU/h ≈ 0,293071 W (conversão térmica)
+  const cop = COP_MEDIO[tipo] || COP_MEDIO.convencional;
+  return capacidadeTermica / cop; // potência elétrica real = capacidade térmica ÷ COP
+}
+function converterAVParaWatts(amperes, volts){
+  return amperes * volts;
+}
+function converterCvParaWatts(cv){
+  return cv * 735.5;
+}
+
+const customUnit = $('custom-unit');
+const convBtu = $('conv-btu');
+const convAv = $('conv-av');
+const convCv = $('conv-cv');
+const convResultadoNota = $('conv-resultado-nota');
+const convResultadoW = $('conv-resultado-w');
+const customWattsInput = $('custom-watts');
+
+customUnit.addEventListener('change', ()=>{
+  const modo = customUnit.value;
+  convBtu.classList.toggle('hidden', modo !== 'btu');
+  convAv.classList.toggle('hidden', modo !== 'av');
+  convCv.classList.toggle('hidden', modo !== 'cv');
+  convResultadoNota.classList.toggle('hidden', modo === 'w');
+  if(modo === 'w'){ customWattsInput.value = ''; customWattsInput.focus(); }
+});
+
+function recalcularConversao(){
+  const modo = customUnit.value;
+  let watts = null;
+  if(modo === 'btu'){
+    const btu = parseFloat($('conv-btu-valor').value);
+    if(btu > 0) watts = converterBtuParaWatts(btu, $('conv-btu-tipo').value);
+  }else if(modo === 'av'){
+    const a = parseFloat($('conv-av-a').value);
+    const v = parseFloat($('conv-av-v').value);
+    if(a > 0 && v > 0) watts = converterAVParaWatts(a, v);
+  }else if(modo === 'cv'){
+    const cv = parseFloat($('conv-cv-valor').value);
+    if(cv > 0) watts = converterCvParaWatts(cv);
+  }
+  if(watts !== null){
+    const arredondado = Math.round(watts);
+    convResultadoW.textContent = arredondado;
+    customWattsInput.value = arredondado;
+  }
+}
+['conv-btu-valor','conv-btu-tipo','conv-av-a','conv-av-v','conv-cv-valor'].forEach(id=>{
+  $(id).addEventListener('input', recalcularConversao);
+  $(id).addEventListener('change', recalcularConversao);
+});
+
 $('btn-add-custom').addEventListener('click', ()=>{
   const nome = $('custom-name').value.trim();
   const watts = parseFloat($('custom-watts').value);
@@ -641,25 +761,33 @@ $('btn-add-custom').addEventListener('click', ()=>{
   state.devices.push(mkDevice({ nome, potencia:watts, categoria:'personalizado', custom:true }, qty, 3));
   save();
   $('custom-name').value = ''; $('custom-watts').value = ''; $('custom-qty').value = '1';
+  // repõe o conversor de unidades para a próxima vez que o formulário for aberto
+  customUnit.value = 'w';
+  convBtu.classList.add('hidden');
+  convAv.classList.add('hidden');
+  convCv.classList.add('hidden');
+  convResultadoNota.classList.add('hidden');
+  $('conv-btu-valor').value = ''; $('conv-av-a').value = ''; $('conv-cv-valor').value = '';
   renderAll();
   closeSheet();
 });
 
-/* ---------- Tarifário (categoria + Potência Contratada + taxa fixa BT-Trif) ---------- */
+/* ---------- Tarifário (categoria + Potência Contratada + tarifa editável) ---------- */
 function atualizarResumoTarifario(){
   const t = tarifarioAtual();
-  const taxaFixa = taxaFixaAtual();
-  tarifaKwhAplicadaEl.textContent = fmt(t.tarifaKwh);
-  taxaFixaAplicadaEl.textContent = fmt(taxaFixa);
-  tariffHeader.textContent = t.short + ' · ' + fmt(t.tarifaKwh) + ' Kz/kWh';
-  // aviso só aparece quando a categoria é BT-Trif e a taxa fixa ainda não foi preenchida
-  avisoTrif.style.display = (t.fixaEditavel && !taxaFixa) ? 'block' : 'none';
+  taxaFixaAplicadaEl.textContent = fmt(t.taxaFixa, 2);
+  tariffHeader.textContent = t.short + ' · ' + fmt(tarifaAtual()) + ' Kz/kWh';
+  avisoGrandes.style.display = t.semDados ? 'block' : 'none';
+  pcInput.disabled = !!t.semDados;
+  tarifaInput.disabled = !!t.semDados;
 }
 
 categoriaSelect.addEventListener('change', ()=>{
   state.categoria = categoriaSelect.value;
-  const t = tarifarioAtual();
-  taxaFixaTrifRow.style.display = t.fixaEditavel ? 'flex' : 'none';
+  // ao trocar de categoria, a tarifa volta ao valor oficial dessa categoria
+  // (o utilizador pode voltar a editá-la manualmente se precisar)
+  state.tarifaOverride = null;
+  tarifaInput.value = tarifarioAtual().tarifaKwh || '';
   save();
   atualizarResumoTarifario();
   renderResults();
@@ -672,9 +800,9 @@ pcInput.addEventListener('input', ()=>{
   renderResults();
 });
 
-taxaFixaTrifInput.addEventListener('input', ()=>{
-  const val = parseFloat(taxaFixaTrifInput.value);
-  state.taxaFixaTrif = isNaN(val) ? null : val;
+tarifaInput.addEventListener('input', ()=>{
+  const val = parseFloat(tarifaInput.value);
+  state.tarifaOverride = isNaN(val) ? null : val;
   save();
   atualizarResumoTarifario();
   renderResults();
@@ -687,7 +815,7 @@ $('btn-anomaly').addEventListener('click', ()=>{
   const normalKwhMes = dailyKwh(dev) * 30;
   const anomKwhDia = (dev.potencia * dev.quantidade * 24) / 1000;
   const anomKwhMes = anomKwhDia * 30;
-  const extraKzMes = (anomKwhMes - normalKwhMes) * tarifarioAtual().tarifaKwh * 1.14;
+  const extraKzMes = (anomKwhMes - normalKwhMes) * tarifaAtual() * 1.14;
   anomalyResult.innerHTML = `Se <strong>${escapeHtml(dev.nome)}</strong> ficar ligado <strong>24h/dia</strong> em vez de <strong>${fmt(dev.horas,1)}h/dia</strong>, o consumo mensal passa de <strong>${fmt(normalKwhMes)} kWh</strong> para <strong>${fmt(anomKwhMes)} kWh</strong> — um custo extra estimado de <strong>${fmt(extraKzMes,0)} Kz/mês</strong>.`;
   anomalyResult.classList.add('show');
 });
@@ -739,7 +867,6 @@ $('btn-finalizar').addEventListener('click', ()=>{
    TELA 3 — SELFIE: temporizador de 30s + diálogo SweetAlert2
    ============================================================ */
 let selfieTimeoutId = null;
-let agradecimentoFallbackId = null;
 function iniciarTemporizadorSelfie(){
   clearTimeout(selfieTimeoutId);
   // temporizador invisível: o visitante não vê contagem, só a pergunta ao fim de 30s
@@ -747,7 +874,7 @@ function iniciarTemporizadorSelfie(){
 }
 $('btn-selfie-pronto').addEventListener('click', ()=>{
   clearTimeout(selfieTimeoutId);
-  audioSorria.pause(); // evita sobrepor a locução "Sorria..." com o diálogo de confirmação
+  if('speechSynthesis' in window) window.speechSynthesis.cancel(); // evita sobrepor "Sorria..." com o diálogo
   perguntarSeTirouFoto();
 });
 function perguntarSeTirouFoto(){
@@ -759,38 +886,27 @@ function perguntarSeTirouFoto(){
     allowOutsideClick:false
   }).then(res=>{
     if(res.isConfirmed){
-      // SIM — o robô muda de pose para saudar, agradece a visita e toca a locução gravada
-      audioSorria.pause();
+      // SIM — o robô muda de pose para saudar, agradece a visita e fala por voz do navegador
+      if('speechSynthesis' in window) window.speechSynthesis.cancel();
       const img = $('robo-img-selfie');
       img.classList.remove('hidden');
-      img.src = 'robo-sauda.png';
+      img.src = '';
       $('robo-placeholder-selfie').classList.add('hidden');
       $('robo-placeholder-selfie').querySelector('i').className = 'fa-solid fa-hand-peace';
-      $('selfie-legenda').textContent = 'A ENDE agradece a sua visita! Ajude-nos a iluminar Angola com consumo consciente.';
+      $('selfie-legenda').textContent = TEXTO_AGRADECIMENTO;
       $('btn-selfie-pronto').classList.add('hidden');
 
-      // volta ao início assim que a locução de agradecimento terminar de tocar
-      // (com um pequeno respiro de 1,2s), mas nunca fica "presa": se o áudio
-      // falhar ou ainda não existir, um temporizador de segurança de 8s garante
-      // que o totem continua o ciclo na mesma
-      clearTimeout(agradecimentoFallbackId);
-      function voltarAoInicio(){
-        clearTimeout(agradecimentoFallbackId);
-        limparSimuladorParaProximoVisitante();
-        irParaBoasVindas();
-      }
-      audioAgradecimento.onended = ()=> setTimeout(voltarAoInicio, 1200);
-      if(!mudo){
-        audioAgradecimento.currentTime = 0;
-        audioAgradecimento.play().catch(voltarAoInicioComAtraso);
-      }else{
-        voltarAoInicioComAtraso();
-      }
-      function voltarAoInicioComAtraso(){ setTimeout(voltarAoInicio, 5000); }
-      agradecimentoFallbackId = setTimeout(voltarAoInicio, 8000);
+      // volta ao início assim que a voz terminar de falar (com um pequeno
+      // respiro de 1,2s); se a voz falhar, "falar()" já chama aoTerminar na hora
+      falar(TEXTO_AGRADECIMENTO, ()=>{
+        setTimeout(()=>{
+          limparSimuladorParaProximoVisitante();
+          irParaBoasVindas();
+        }, 1200);
+      });
     }else{
       // NÃO — devolve mais 30 segundos de sorriso para repetir a fotografia,
-      // sem repetir a locução "Sorria..." 
+      // sem repetir a locução "Sorria..." (como pedido)
       iniciarTemporizadorSelfie();
     }
   });
@@ -802,12 +918,11 @@ function perguntarSeTirouFoto(){
 load();
 categoriaSelect.value = state.categoria;
 pcInput.value = state.pc;
-taxaFixaTrifRow.style.display = tarifarioAtual().fixaEditavel ? 'flex' : 'none';
-if(typeof state.taxaFixaTrif === 'number') taxaFixaTrifInput.value = state.taxaFixaTrif;
+tarifaInput.value = (typeof state.tarifaOverride === 'number') ? state.tarifaOverride : (tarifarioAtual().tarifaKwh || '');
 atualizarResumoTarifario();
 adviceText.value = state.advice || '';
 renderAll();
-escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 50);
+escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 26);
 tocarLoopBoasVindas(); // arranca o loop logo na primeira visita (fica à espera do 1º toque se o navegador bloquear o autoplay)
 
 })();
