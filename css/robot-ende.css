@@ -1854,3 +1854,664 @@ textarea:focus {
     font-size: 1.05rem;
   }
 }
+
+/* ============================================================
+   Tarefa 2 — TOOLTIPS DE ACESSIBILIDADE
+   ------------------------------------------------------------
+   Estilo do tooltip global partilhado (motor em ende.js, função
+   setupTooltips). Lido por:
+     - hover (rato) — segue o cursor
+     - focus (teclado) — aparece junto ao elemento focado
+     - toque (kiosk) — aparece por 4 segundos
+   ============================================================ */
+.ende-tooltip {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  max-width: 280px;
+  padding: 9px 12px;
+  background: var(--ink);
+  color: #fff;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(7, 26, 52, 0.28);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease), visibility 0s linear 0.15s;
+  letter-spacing: 0.1px;
+}
+.ende-tooltip.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease), visibility 0s linear 0s;
+}
+.ende-tooltip::before {
+  /* pequeno "pip" em cima do tooltip, mais elegante */
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 18px;
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+/* ============================================================
+   Tarefa 3 — CARTÃO DE POTÊNCIA CONTRATADA (PC)
+   Distintivo visual: leve tom amarelado/cálido para separar
+   "informação de contexto" dos "resultados calculados".
+   ============================================================ */
+.stat-card.stat-pc {
+  background: linear-gradient(150deg, #fff8ee, #fef3e0);
+  border-color: #f1c786;
+}
+.stat-card.stat-pc .stat-label {
+  color: var(--orange-deep);
+}
+.stat-card.stat-pc .stat-value {
+  color: var(--orange-deep);
+}
+.stat-card.stat-pc .stat-sub strong {
+  color: var(--orange-deep);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* Em ecrãs pequenos, mantém o ritmo do grid (5 cartões) sem sobressalto */
+@media (max-width: 519px) {
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Cursor "help" nos elementos tooltipáveis — dica visual extra de acessibilidade */
+[data-tooltip] {
+  cursor: help;
+}
+/* exceções: inputs e botões continuam com cursor adequado */
+input[data-tooltip],
+button[data-tooltip],
+select[data-tooltip] {
+  cursor: pointer;
+}
+
+/* Touch: anula o efeito de cursor (não faz sentido em ecrãs táteis) */
+@media (hover: none) and (pointer: coarse) {
+  [data-tooltip] { cursor: default; }
+  input[data-tooltip], button[data-tooltip], select[data-tooltip] { cursor: pointer; }
+}
+
+/* ============================================================
+   TAB 0 — TIPO DE CLIENTE (cartões de seleção de categoria)
+   ============================================================ */
+.tipo-cliente-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (min-width: 620px) {
+  .tipo-cliente-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 980px) {
+  .tipo-cliente-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+.cat-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 14px 14px 12px;
+  background: var(--white);
+  border: 2px solid var(--line-soft);
+  border-radius: var(--r-m);
+  text-align: left;
+  cursor: pointer;
+  transition: 0.18s var(--ease);
+  font-family: inherit;
+}
+.cat-card:hover {
+  border-color: var(--orange);
+  box-shadow: var(--sh-soft);
+  transform: translateY(-1px);
+}
+.cat-card.selected {
+  border-color: var(--red);
+  background: linear-gradient(150deg, #fff5f5, #fdeeef);
+  box-shadow: 0 8px 22px rgba(200, 16, 46, 0.18);
+}
+.cat-card-no {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--mist-2);
+  color: var(--red-dark);
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-card.selected .cat-card-no {
+  background: var(--red);
+  color: var(--white);
+}
+.cat-card-body {
+  flex: 1;
+  min-width: 0;
+}
+.cat-card-name {
+  font-family: "Sora", "Inter", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--red);
+  line-height: 1.25;
+  margin-bottom: 6px;
+}
+.cat-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--mist-2);
+  color: var(--slate);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+.meta-pill i {
+  font-size: 0.62rem;
+  color: var(--orange-deep);
+}
+.cat-card.selected .meta-pill {
+  background: var(--white);
+}
+.cat-card-pc {
+  font-size: 0.7rem;
+  color: var(--slate);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cat-card-pc i {
+  color: var(--slate-light);
+  font-size: 0.66rem;
+}
+.cat-card-revisao {
+  margin-top: 5px;
+  font-size: 0.62rem;
+  color: var(--orange-deep);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cat-card-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--red);
+  font-size: 1.1rem;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: 0.18s var(--ease);
+}
+.cat-card.selected .cat-card-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tipo-cliente-footnote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--ice);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--r-s);
+  font-size: 0.74rem;
+  color: var(--slate);
+  line-height: 1.4;
+}
+.tipo-cliente-footnote i {
+  color: var(--orange-deep);
+  font-size: 0.85rem;
+  margin-top: 1px;
+  flex: none;
+}
+
+/* ============================================================
+   GATE DE NAVEGAÇÃO — tabs bloqueadas antes de Tipo de Cliente
+   ============================================================ */
+.tab.locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+  position: relative;
+}
+.tab.locked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238A8F98'><path d='M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm3 8H9V6a3 3 0 0 1 6 0v3z'/></svg>") center/contain no-repeat;
+}
+.tab.locked i,
+.tab.locked > * {
+  pointer-events: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  .tab.locked { cursor: default; }
+}
+
+/* Animação de "aviso" quando o utilizador tenta avançar sem escolher tipo de cliente */
+@keyframes pulse-warn-anim {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 122, 26, 0); }
+  35%      { transform: scale(1.04); box-shadow: 0 0 0 6px rgba(255, 122, 26, 0.25); }
+  70%      { transform: scale(1); }
+}
+.tab.pulse-warn {
+  animation: pulse-warn-anim 0.9s var(--ease);
+}
+
+/* ============================================================
+   ÍCONES DE APARELHOS ELÉTRICOS — camada decorativa de fundo
+   ------------------------------------------------------------
+   Aparelhos SVG (TV, lâmpada, frigo, AC, ferro, ventoinha,
+   tomada, máquina de lavar, portátil, telemóvel, micro-ondas,
+   bomba) que flutuam lentamente no fundo como as partículas.
+   - 9 ícones no total (quantidade moderada)
+   - Tamanhos variados (26-48px) para dar profundidade
+   - Opacidade baixa (10-26%) para não competir com a UI
+   - Animação lenta (24-46s) com drift horizontal e rotação suave
+   - pointer-events:none — não interfere com cliques
+   ============================================================ */
+.icones-aparelhos {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.icone-aparelho {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.9);
+  filter: drop-shadow(0 2px 6px rgba(7, 26, 52, 0.18));
+  animation: flutuarIcone linear infinite;
+  will-change: transform, opacity;
+  /* variáveis CSS preenchidas pelo JS:
+     --drift-icone (vw), --escala-max, --rot-ini (deg) */
+  transform: rotate(var(--rot-ini, 0deg));
+}
+
+.icone-aparelho svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@keyframes flutuarIcone {
+  0% {
+    transform: translateY(0) translateX(0) rotate(var(--rot-ini, 0deg)) scale(1);
+    opacity: 0;
+  }
+  8% {
+    opacity: var(--op, 0.18); /* dummy — o opacity inline sobrepõe-se, mas mantemos para reforço */
+  }
+  50% {
+    transform: translateY(-55vh) translateX(calc(var(--drift-icone, 0vw) * 0.5))
+               rotate(calc(var(--rot-ini, 0deg) + 4deg)) scale(var(--escala-max, 1.1));
+  }
+  92% {
+    opacity: 0.08;
+  }
+  100% {
+    transform: translateY(-118vh) translateX(var(--drift-icone, 0vw))
+               rotate(calc(var(--rot-ini, 0deg) + 8deg)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Em ecrãs pequenos reduzimos para 6 ícones (esconde alguns) para não poluir */
+@media (max-width: 540px) {
+  .icone-aparelho:nth-child(n+7) { display: none; }
+}
+
+/* Respeitar preferência do utilizador por menos movimento (acessibilidade) */
+@media (prefers-reduced-motion: reduce) {
+  .icone-aparelho {
+    animation-duration: 60s !important;
+    opacity: 0.08 !important;
+  }
+}
+
+/* ============================================================
+   CONTROLO DE VOLUME — slider + botão toggle (Tela 1)
+   ============================================================ */
+.volume-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  padding: 8px 14px 8px 8px;
+  border-radius: 40px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: 0.15s var(--ease);
+  margin-top: 6px;
+}
+
+.volume-control:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.volume-toggle {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: 0.18s var(--ease);
+}
+.volume-toggle:hover {
+  background: var(--orange);
+  transform: scale(1.05);
+}
+.volume-toggle:active {
+  transform: scale(0.95);
+}
+.volume-toggle[aria-pressed="true"] {
+  background: rgba(228, 72, 58, 0.35);
+}
+
+.volume-slider-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Slider de volume — estilizado para combater com o tema escuro/energético */
+#volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 130px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+  outline: none;
+  cursor: pointer;
+  /* gradiente que mostra o "preenchimento" até ao valor actual (até 80% por defeito) */
+  background-image: linear-gradient(to right, var(--orange) 0%, var(--orange) 80%, rgba(255,255,255,0.18) 80%, rgba(255,255,255,0.18) 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* WebKit (Chrome, Safari, Edge) — polegar */
+#volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 2px solid var(--orange);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: 0.15s var(--ease);
+}
+#volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 6px rgba(255, 122, 26, 0.22);
+}
+
+/* Firefox — polegar */
+#volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 2px solid var(--orange);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: 0.15s var(--ease);
+}
+#volume-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+#volume-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Track do Firefox com gradiente também (precisa de fundo diferente) */
+#volume-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--orange);
+}
+
+.volume-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--white);
+  min-width: 36px;
+  text-align: right;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Em ecrãs pequenos, o slider encolhe um pouco */
+@media (max-width: 540px) {
+  #volume-slider { width: 90px; }
+  .volume-value { min-width: 32px; font-size: 0.7rem; }
+}
+
+/* ============================================================
+   BANNER "VOCÊ É DO TIPO X" — topo do painel de Resultados
+   ============================================================ */
+.categoria-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, var(--red-pale), var(--mist));
+  border: 1.5px solid #f1c786;
+  border-left: 5px solid var(--red);
+  border-radius: var(--r-l);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.categoria-banner::before {
+  /* reflexo decorativo no canto */
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 122, 26, 0.12), transparent 70%);
+  pointer-events: none;
+}
+.categoria-banner-icon {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+}
+.categoria-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+.categoria-banner-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 800;
+  color: var(--slate-light);
+  margin-bottom: 2px;
+}
+.categoria-banner-nome {
+  font-family: "Sora", "Inter", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--red);
+  line-height: 1.15;
+}
+.categoria-banner-sub {
+  font-size: 0.76rem;
+  color: var(--slate);
+  margin-top: 4px;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.categoria-banner-sub i {
+  color: var(--success);
+  font-size: 0.8rem;
+}
+.categoria-banner-sub strong {
+  color: var(--red-dark);
+}
+.categoria-banner-change {
+  flex: none;
+  background: var(--white);
+  border: 1.5px solid var(--line-soft);
+  color: var(--slate);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 7px 11px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.15s var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.categoria-banner-change:hover {
+  background: var(--red-pale);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* Estado "corrigido" — quando a categoria foi reclassificada pelo Pc */
+.categoria-banner.corrigido {
+  background: linear-gradient(135deg, #fff5e6, var(--mist));
+  border-left-color: var(--orange);
+}
+.categoria-banner.corrigido .categoria-banner-icon {
+  background: var(--orange);
+  box-shadow: 0 4px 12px rgba(255, 122, 26, 0.4);
+}
+.categoria-banner.corrigido .categoria-banner-nome {
+  color: var(--orange-deep);
+}
+.categoria-banner.corrigido .categoria-banner-sub i {
+  color: var(--orange-deep);
+}
+
+/* Estado "gap" — quando o Pc caiu fora dos escalões oficiais */
+.categoria-banner.gap-alert {
+  background: linear-gradient(135deg, #fff8e6, var(--mist));
+  border-left-color: #f0b429;
+}
+.categoria-banner.gap-alert .categoria-banner-icon {
+  background: #f0b429;
+}
+.categoria-banner.gap-alert .categoria-banner-sub i {
+  color: #b8860b;
+}
+
+/* Em ecrãs pequenos: botão "Trocar" vai para baixo */
+@media (max-width: 540px) {
+  .categoria-banner {
+    flex-wrap: wrap;
+  }
+  .categoria-banner-change {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================================
+   BOTÃO "TESTAR VOZ" — dentro do controlo de volume
+   ============================================================ */
+.volume-test {
+  flex: none;
+  background: rgba(255, 122, 26, 0.25);
+  border: 1.5px solid rgba(255, 122, 26, 0.5);
+  color: var(--white);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.18s var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+}
+.volume-test:hover {
+  background: var(--orange);
+  border-color: var(--orange);
+  transform: scale(1.03);
+}
+.volume-test:active {
+  transform: scale(0.96);
+}
+.volume-test i {
+  font-size: 0.78rem;
+}
+
+/* Em ecrãs pequenos: o botão "Testar voz" passa para a linha de baixo */
+@media (max-width: 540px) {
+  .volume-control {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .volume-test {
+    width: 100%;
+    justify-content: center;
+  }
+}
