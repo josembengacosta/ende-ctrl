@@ -1411,7 +1411,7 @@ function gerarQRInstagram(){
   if(!alvo || typeof QRCode === 'undefined') return;
   alvo.innerHTML = '';
   new QRCode(alvo, {
-    text:'https://www.facebook.com/ende.oficial/',
+    text:'https://www.instagram.com/ende_oficial/',
     width:118, height:118,
     colorDark:'#0B2547', colorLight:'#FFFFFF',
     correctLevel: QRCode.CorrectLevel.M
@@ -1709,20 +1709,23 @@ function renderCatalog(){
   let html = '';
   Object.keys(groups).forEach(catKey=>{
     html += `<div class="catalog-group-label">${CATEGORIAS[catKey].label}</div>`;
-    groups[catKey].forEach(it=>{
+    groups[catKey].forEach((it, idx)=>{
       // Tarefa 2: tooltip no item do catálogo — ajuda o visitante a perceber o que vai adicionar
       const consumo6h = ((it.potencia * 6) / 1000); // estimativa a 6h/dia (horaSugeridas pode variar)
       const tooltip = `${it.nome} · ${CATEGORIAS[it.categoria].label} — ${it.potencia} W. Sugestão de uso: ${it.horasSugeridas}h/dia (~${fmt(consumo6h,2)} kWh a 6h/dia). Toque para adicionar ao inventário.`;
-      html += `<button type="button" class="catalog-item" data-add-catalog="${it.nome}" data-tooltip="${escapeHtml(tooltip)}">
+      // Usar índice global do CATALOGO em vez do nome (evita problemas com aspas no nome)
+      const catalogIdx = CATALOGO.findIndex(c => c.nome === it.nome && c.potencia === it.potencia);
+      html += `<button type="button" class="catalog-item" data-catalog-idx="${catalogIdx}" data-tooltip="${escapeHtml(tooltip)}">
         <div class="d-icon"><i class="fa-solid ${CATEGORIAS[it.categoria].icon}"></i></div>
         <div><div class="ci-name">${escapeHtml(it.nome)}</div><div class="ci-watt">${it.potencia} W</div></div>
         <i class="fa-solid fa-circle-plus ci-add"></i></button>`;
     });
   });
   catalogResults.innerHTML = html;
-  catalogResults.querySelectorAll('[data-add-catalog]').forEach(btn=>{
+  catalogResults.querySelectorAll('[data-catalog-idx]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const item = CATALOGO.find(c=> c.nome === btn.getAttribute('data-add-catalog'));
+      const idx = parseInt(btn.getAttribute('data-catalog-idx'), 10);
+      const item = CATALOGO[idx];
       if(!item) return;
       state.devices.push(mkDevice(item, 1, item.horasSugeridas));
       save();
@@ -2065,26 +2068,45 @@ async function exportarRelatorioPDF(){
     const M = 14;  // margem
     let y = 0;
 
-    // === CABEÇALHO ===
+        // === CABEÇALHO ===
     // faixa vermelha no topo
     doc.setFillColor(200, 16, 46);
-    doc.rect(0, 0, W, 28, 'F');
+    doc.rect(0, 0, W, 32, 'F');
+    // logo da ENDE (carrega como base64 via canvas)
+    let logoData = null;
+    let logoImg = null;
+    try{
+      logoImg = new Image();
+      logoImg.src = 'img/ende-white.png';
+      await new Promise((res,rej)=>{ logoImg.onload=res; logoImg.onerror=rej; });
+      const logoCanvas = document.createElement('canvas');
+      logoCanvas.width = logoImg.naturalWidth;
+      logoCanvas.height = logoImg.naturalHeight;
+      logoCanvas.getContext('2d').drawImage(logoImg, 0, 0);
+      logoData = logoCanvas.toDataURL('image/png');
+    }catch(e){ console.warn('[ENDE PDF] Logo não carregado:', e); }
+    if(logoData && logoImg){
+      const logoH = 14;
+      const logoW = (logoImg.naturalWidth * logoH) / logoImg.naturalHeight;
+      doc.addImage(logoData, 'PNG', M, 4, logoW, logoH);
+    }
     // título
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('ENDE — Simulador de Consumo', M, 13);
+    doc.setFontSize(13);
+    doc.text('EMPRESA NACIONAL DE DISTRIBUIÇÃO', M + (logoData ? 22 : 0), 11);
+    doc.text('DE ELECTRICIDADE-EP', M + (logoData ? 22 : 0), 17);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text('FILDA 2026 · Literacia Energética', M, 20);
+    doc.setFontSize(8);
+    doc.text('Simulador de Consumo Eléctrico · FILDA 2026 · Literacia Energética', M + (logoData ? 22 : 0), 23);
     // data no canto direito
     const agora = new Date();
     const dataStr = agora.toLocaleString('pt-PT', {
       day:'2-digit', month:'2-digit', year:'numeric',
       hour:'2-digit', minute:'2-digit'
     });
-    doc.text('Emitido em: ' + dataStr, W - M, 20, { align:'right' });
-    y = 36;
+    doc.text('Emitido em: ' + dataStr, W - M, 28, { align:'right' });
+    y = 40;
 
     // === IDENTIFICAÇÃO DO CLIENTE ===
     doc.setTextColor(11, 21, 32);
@@ -2194,11 +2216,13 @@ async function exportarRelatorioPDF(){
     doc.setFont('helvetica', 'normal');
     y += 6;
 
-    // nota sobre o IVA
+    // nota sobre o IVA (quebra em linhas para não ultrapassar a margem)
     doc.setFontSize(7.5);
     doc.setTextColor(138, 143, 152);
-    doc.text('* Custos calculados com a fórmula oficial ENDE: (TaxaFixa × Pc + Tarifa × Consumo) × 1,14 (IVA 14%). Valores de referência — confirme com a categoria real do cliente.', M, y);
-    y += 8;
+    const disclaimerTxt = '* Custos calculados com a fórmula oficial ENDE: (TaxaFixa × Pc + Tarifa × Consumo) × 1,14 (IVA 14%). Valores de referência — confirme com a categoria real do cliente.';
+    const disclaimerLinhas = doc.splitTextToSize(disclaimerTxt, W - 2*M);
+    disclaimerLinhas.forEach(linha=>{ doc.text(linha, M, y); y += 3.5; });
+    y += 3;
 
     // === GRÁFICO ===
     if(y > H - 80){
@@ -2400,6 +2424,22 @@ renderAll();
 // o utilizador vê o tipo de cliente seleccionado e pode avançar ou trocar.
 switchTab(0);
 escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 26);
+
+/* ---------- Logo da ENDE na Tela 1 (Boas-vindas) ---------- */
+(function inserirLogoBoasVindas(){
+  const tela = document.querySelector('.tela-boas-vindas');
+  if(!tela || document.getElementById('logo-ende-boas-vindas')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'logo-ende-boas-vindas';
+  wrap.style.cssText = 'position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:10;text-align:center;';
+  wrap.innerHTML = `
+    <img src="img/ende-white.png" alt="ENDE" style="height:52px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.25));" onerror="this.style.display='none'">
+    <div style="margin-top:6px;font-family:Sora,sans-serif;font-size:0.72rem;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.3);letter-spacing:0.04em;white-space:nowrap;">
+      EMPRESA NACIONAL DE DISTRIBUIÇÃO<br>DE ELECTRICIDADE-EP
+    </div>
+  `;
+  tela.insertBefore(wrap, tela.firstChild);
+})();
 
 /* ============================================================
    DESBLOQUEIO DA VOZ (autoplay policy do Chrome)
