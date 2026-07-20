@@ -2,452 +2,507 @@
 <html lang="pt-AO">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#7A0A1D">
-    <meta name="author" content="José Mbenga da Costa - Solutec AO ">
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#7A0A1D">
+  <meta name="author" content="José Mbenga da Costa - Solutec AO ">
 
-    <title>ENDE — Assistente de Literacia Enérgetica · FILDA 2026 </title>
-    <link rel="shortcut icon" href="img/ende-white.png" type="image/x-icon">
-    <!-- ===================== Estilos =====================
+  <title>ENDE — Assistente de Literacia Enérgetica · FILDA 2026 </title>
+  <link rel="shortcut icon" href="img/ende-white.png" type="image/x-icon">
+  <!-- ===================== Estilos =====================
          Bootstrap 5 com fallback automático local → CDN. -->
-    <link id="bootstrap-css" href="css/bootstrap.min.css" rel="stylesheet"
-          onerror="this.onerror=null; this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css'; console.warn('[ENDE] css/bootstrap.min.css não encontrado → CDN.');">
-    <!-- Font Awesome (ícones) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- Google Fonts: Sora (títulos/CTA) + Inter (interface) + IBM Plex Mono (leituras digitais) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="css/robot-ende.css">
+  <link id="bootstrap-css" href="css/bootstrap.min.css" rel="stylesheet"
+    onerror="this.onerror=null; this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css'; console.warn('[ENDE] css/bootstrap.min.css não encontrado → CDN.');">
+  <!-- Font Awesome (ícones) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <!-- Google Fonts: Sora (títulos/CTA) + Inter (interface) + IBM Plex Mono (leituras digitais) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/robot-ende.css">
 </head>
 
 <body>
 
-    
-<!-- Camada ambiente comum aos três ecrãs -->
-<div class="aura-blob b1"></div>
-<div class="aura-blob b2"></div>
-<div class="particulas" id="particulas"></div>
-<!-- Nova camada: ícones SVG de aparelhos elétricos a flutuar (decorativo, como as partículas) -->
-<div class="icones-aparelhos" id="icones-aparelhos" aria-hidden="true"></div>
-<div class="marca-fixa"><i class="fa-solid fa-bolt-lightning"></i><span>ENDE · FILDA 2026</span></div>
 
-<!-- ================================================================
+  <!-- Camada ambiente comum aos três ecrãs -->
+  <div class="aura-blob b1"></div>
+  <div class="aura-blob b2"></div>
+  <div class="particulas" id="particulas"></div>
+  <!-- Nova camada: ícones SVG de aparelhos elétricos a flutuar (decorativo, como as partículas) -->
+  <div class="icones-aparelhos" id="icones-aparelhos" aria-hidden="true"></div>
+  <div class="marca-fixa"><i class="fa-solid fa-bolt-lightning"></i><span>ENDE · FILDA 2026</span></div>
+
+  <!-- ================================================================
      TELA 1 — BOAS-VINDAS
      Substituir a imagem "robo-ende.png" pela mascote oficial.
      ================================================================ -->
-<section class="tela tela-boas-vindas" id="tela-boas-vindas" data-tela="boas-vindas">
-  <div class="robo-wrap">
-    <img src="img/robo-ende.png" alt="Robô assistente da ENDE" class="robo-img" id="robo-img-1" onerror="handleRoboError(this,'robo-placeholder-1')">
-    <div class="robo-placeholder hidden" id="robo-placeholder-1"><i class="fa-solid fa-robot"></i></div>
-  </div>
+  <section class="tela tela-boas-vindas" id="tela-boas-vindas" data-tela="boas-vindas">
+    <div class="robo-wrap">
+      <img src="img/robo-ende.png" alt="Robô assistente da ENDE" class="robo-img" id="robo-img-1"
+        onerror="handleRoboError(this,'robo-placeholder-1')">
+      <div class="robo-placeholder hidden" id="robo-placeholder-1"><i class="fa-solid fa-robot"></i></div>
+    </div>
 
-  <div class="balao">
-    <span id="texto-boas-vindas"></span><span class="cursor-escrita" id="cursor-boas-vindas"></span>
-  </div>
+    <div class="balao">
+      <span id="texto-boas-vindas"></span><span class="cursor-escrita" id="cursor-boas-vindas"></span>
+    </div>
 
-  <button class="btn-falar" id="btn-mudo" aria-pressed="false" data-tooltip="Liga ou desliga a voz do robô (leitura automática dos textos).">
-    <i class="fa-solid fa-volume-high"></i> <span id="btn-mudo-label">Som ligado</span>
-  </button>
+    <button class="btn-falar" id="btn-mudo" aria-pressed="false"
+      data-tooltip="Liga ou desliga a voz do robô (leitura automática dos textos).">
+      <i class="fa-solid fa-volume-high"></i> <span id="btn-mudo-label">Som ligado</span>
+    </button>
 
-  <button class="btn-cta" id="btn-iniciar" data-tooltip="Começa a simulação de consumo elétrico — adicione os seus equipamentos e veja o custo estimado.">Clica aqui para Iniciar Simulação
-  </button>
+    <button class="btn-cta" id="btn-iniciar"
+      data-tooltip="Começa a simulação de consumo elétrico — adicione os seus equipamentos e veja o custo estimado.">Clica
+      aqui para Iniciar Simulação
+    </button>
 
-  <!-- Controlo de volume da voz do robô (Web Speech API).
+    <!-- Controlo de volume da voz do robô (Web Speech API).
        O slider ajusta o volume em tempo real (0 a 100%), aplicado à próxima
        fala. O botão do lado muda para mudo/ligado (atalho rápido).
        O botão "Testar voz" permite verificar se a voz está a funcionar no
        ambiente (útil em modo kiosk onde não há acesso à consola do browser). -->
-  <div class="volume-control" id="volume-control" role="group" aria-label="Controlo de volume da voz do robô">
-    <button class="volume-toggle" id="volume-toggle" aria-pressed="false" aria-label="Ativar ou silenciar voz" data-tooltip="Ativa ou silencia totalmente a voz do robô.">
-      <i class="fa-solid fa-volume-high" id="volume-icon"></i>
-    </button>
-    <div class="volume-slider-wrap" data-tooltip="Arraste para ajustar o volume da voz do robô (0% a 100%).">
-      <input type="range" id="volume-slider" min="0" max="100" value="80" step="1" aria-label="Volume da voz" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80">
-      <span class="volume-value" id="volume-value">80%</span>
+    <div class="volume-control" id="volume-control" role="group" aria-label="Controlo de volume da voz do robô">
+      <button class="volume-toggle" id="volume-toggle" aria-pressed="false" aria-label="Ativar ou silenciar voz"
+        data-tooltip="Ativa ou silencia totalmente a voz do robô.">
+        <i class="fa-solid fa-volume-high" id="volume-icon"></i>
+      </button>
+      <div class="volume-slider-wrap" data-tooltip="Arraste para ajustar o volume da voz do robô (0% a 100%).">
+        <input type="range" id="volume-slider" min="0" max="100" value="80" step="1" aria-label="Volume da voz"
+          aria-valuemin="0" aria-valuemax="100" aria-valuenow="80">
+        <span class="volume-value" id="volume-value">80%</span>
+      </div>
+      <button type="button" class="volume-test" id="btn-testar-voz" aria-label="Testar voz do robô"
+        data-tooltip="Toca uma frase de teste para verificar se a voz está a funcionar. Se não ouvir, verifique se o navegador tem vozes em português instaladas (Chrome: chrome://settings/languages).">
+        <i class="fa-solid fa-microphone-lines"></i> <span>Testar voz</span>
+      </button>
     </div>
-    <button type="button" class="volume-test" id="btn-testar-voz" aria-label="Testar voz do robô" data-tooltip="Toca uma frase de teste para verificar se a voz está a funcionar. Se não ouvir, verifique se o navegador tem vozes em português instaladas (Chrome: chrome://settings/languages).">
-      <i class="fa-solid fa-microphone-lines"></i> <span>Testar voz</span>
-    </button>
-  </div>
-</section>
+  </section>
 
-<!-- ================================================================
+  <!-- ================================================================
      TELA 2 — SIMULADOR (3 abas)
      ================================================================ -->
-<section class="tela tela-simulador hidden" id="tela-simulador" data-tela="simulador">
-  <div class="simulador-shell">
+  <section class="tela tela-simulador hidden" id="tela-simulador" data-tela="simulador">
+    <div class="simulador-shell">
 
-    <header class="sim-header">
-      <div class="brand">
-        <div class="brand-mark"><img src="img/ende-white.png" width="40" height="40"
-                            style="border-radius:20%;" alt="ENDE"></div>
-        <div>
-          <h1>Simulador de Consumo - Nossa Energia</h1>
-          <p>ENDE · Literacia Enérgetica</p>
+      <header class="sim-header">
+        <div class="brand">
+          <div class="brand-mark"><img src="img/ende-white.png" width="40" height="40" style="border-radius:20%;"
+              alt="ENDE"></div>
+          <div>
+            <h1>Simulador de Consumo Eléctrico</h1>
+            <p>ENDE · Literacia Enérgetica</p>
+          </div>
         </div>
+        <div class="tariff-pill"><span class="led-dot"></span><span id="tariff-display-header">BT-Mono · 14,16
+            Kz/kWh</span></div>
+      </header>
+
+      <div class="progress-track">
+        <div class="progress-seg" data-seg="0"><span></span></div>
+        <div class="progress-seg" data-seg="1"><span></span></div>
+        <div class="progress-seg" data-seg="2"><span></span></div>
+        <div class="progress-seg" data-seg="3"><span></span></div>
       </div>
-      <div class="tariff-pill"><span class="led-dot"></span><span id="tariff-display-header">BT-Mono · 14,16 Kz/kWh</span></div>
-    </header>
 
-    <div class="progress-track">
-      <div class="progress-seg" data-seg="0"><span></span></div>
-      <div class="progress-seg" data-seg="1"><span></span></div>
-      <div class="progress-seg" data-seg="2"><span></span></div>
-      <div class="progress-seg" data-seg="3"><span></span></div>
-    </div>
+      <nav class="tabs">
+        <div class="tab active" data-tab="0"
+          data-tooltip="Passo 1 — escolha o tipo de cliente (categoria tarifária) antes de avançar."><i
+            class="fa-solid fa-user-tag"></i>Tipo de Cliente</div>
+        <div class="tab" data-tab="1"
+          data-tooltip="Passo 2 — adicione todos os equipamentos elétricos da sua habitação."><i
+            class="fa-solid fa-plug"></i>Inventário</div>
+        <div class="tab" data-tab="2"
+          data-tooltip="Passo 3 — defina quantas horas por dia cada equipamento fica ligado."><i
+            class="fa-regular fa-clock"></i>Período de Uso</div>
+        <div class="tab" data-tab="3" data-tooltip="Passo 4 — veja o consumo e custo estimados (diário e mensal)."><i
+            class="fa-solid fa-chart-pie"></i>Resultados</div>
+      </nav>
 
-    <nav class="tabs">
-      <div class="tab active" data-tab="0" data-tooltip="Passo 1 — escolha o tipo de cliente (categoria tarifária) antes de avançar."><i class="fa-solid fa-user-tag"></i>Tipo de Cliente</div>
-      <div class="tab" data-tab="1" data-tooltip="Passo 2 — adicione todos os equipamentos elétricos da sua habitação."><i class="fa-solid fa-plug"></i>Inventário</div>
-      <div class="tab" data-tab="2" data-tooltip="Passo 3 — defina quantas horas por dia cada equipamento fica ligado."><i class="fa-regular fa-clock"></i>Período de Uso</div>
-      <div class="tab" data-tab="3" data-tooltip="Passo 4 — veja o consumo e custo estimados (diário e mensal)."><i class="fa-solid fa-chart-pie"></i>Resultados</div>
-    </nav>
+      <div class="sim-content">
 
-    <div class="sim-content">
+        <!-- PANEL 0 — TIPO DE CLIENTE (gate inicial) -->
+        <section class="panel active" id="panel-0">
+          <div class="section-title"><i class="fa-solid fa-user-tag"></i>Escolha o tipo de cliente</div>
+          <p class="section-hint">Primeiro escolha se é cliente <strong>Residencial</strong> ou
+            <strong>Empresarial/Industrial</strong>. Depois seleccione a categoria adequada.
+          </p>
 
-      <!-- PANEL 0 — TIPO DE CLIENTE (gate inicial) -->
-      <section class="panel active" id="panel-0">
-        <div class="section-title"><i class="fa-solid fa-user-tag"></i>Escolha o tipo de cliente</div>
-        <p class="section-hint">Primeiro escolha se é cliente <strong>Residencial</strong> ou <strong>Empresarial/Industrial</strong>. Depois seleccione a categoria adequada.</p>
+          <!-- Nível 1: 2 cards grandes (Residencial vs Empresarial) -->
+          <div id="tipo-cliente-raiz" class="tipo-cliente-raiz">
+            <button type="button" class="card-grande card-residencial" id="card-residencial" data-grupo="residencial"
+              data-tooltip="Cliente doméstico — habitação, casa de moradia, apartamento. Inclui as categorias Sociais, Monofásica e Trifásica.">
+              <div class="card-grande-icon"><i class="fa-solid fa-house-chimney-window"></i></div>
+              <div class="card-grande-body">
+                <div class="card-grande-titulo">Residencial</div>
+                <div class="card-grande-sub">Cliente doméstico · 4 categorias</div>
+                <div class="card-grande-cats">Sociais · Monofásica · Trifásica</div>
+              </div>
+              <div class="card-grande-cta"><i class="fa-solid fa-chevron-right"></i></div>
+            </button>
 
-        <!-- Nível 1: 2 cards grandes (Residencial vs Empresarial) -->
-        <div id="tipo-cliente-raiz" class="tipo-cliente-raiz">
-          <button type="button" class="card-grande card-residencial" id="card-residencial" data-grupo="residencial" data-tooltip="Cliente doméstico — habitação, casa de moradia, apartamento. Inclui as categorias Sociais, Monofásica e Trifásica.">
-            <div class="card-grande-icon"><i class="fa-solid fa-house-chimney-window"></i></div>
-            <div class="card-grande-body">
-              <div class="card-grande-titulo">Residencial</div>
-              <div class="card-grande-sub">Cliente doméstico · 4 categorias</div>
-              <div class="card-grande-cats">Sociais · Monofásica · Trifásica</div>
-            </div>
-            <div class="card-grande-cta"><i class="fa-solid fa-chevron-right"></i></div>
-          </button>
+            <button type="button" class="card-grande card-empresarial" id="card-empresarial" data-grupo="empresarial"
+              data-tooltip="Cliente empresarial ou industrial — comércio, serviços, indústria em baixa, média e alta tensão.">
+              <div class="card-grande-icon"><i class="fa-solid fa-industry"></i></div>
+              <div class="card-grande-body">
+                <div class="card-grande-titulo">Empresarial / Industrial</div>
+                <div class="card-grande-sub">Comércio, serviços e indústria · 4 categorias</div>
+                <div class="card-grande-cats">BT · MT · AT Indústria e Comércio</div>
+              </div>
+              <div class="card-grande-cta"><i class="fa-solid fa-chevron-right"></i></div>
+            </button>
+          </div>
 
-          <button type="button" class="card-grande card-empresarial" id="card-empresarial" data-grupo="empresarial" data-tooltip="Cliente empresarial ou industrial — comércio, serviços, indústria em baixa, média e alta tensão.">
-            <div class="card-grande-icon"><i class="fa-solid fa-industry"></i></div>
-            <div class="card-grande-body">
-              <div class="card-grande-titulo">Empresarial / Industrial</div>
-              <div class="card-grande-sub">Comércio, serviços e indústria · 4 categorias</div>
-              <div class="card-grande-cats">BT · MT · AT Indústria e Comércio</div>
-            </div>
-            <div class="card-grande-cta"><i class="fa-solid fa-chevron-right"></i></div>
-          </button>
-        </div>
+          <!-- Nível 2: sub-categorias (escondido até escolher Residencial ou Empresarial) -->
+          <div id="tipo-cliente-sub" class="tipo-cliente-sub hidden">
+            <button type="button" class="btn-voltar-grupos" id="btn-voltar-grupos"
+              data-tooltip="Voltar à escolha entre Residencial e Empresarial.">
+              <i class="fa-solid fa-arrow-left"></i> Voltar
+            </button>
+            <div class="sub-grupos-titulo" id="sub-grupos-titulo">—</div>
+            <div id="tipo-cliente-grid" class="tipo-cliente-grid"></div>
+          </div>
 
-        <!-- Nível 2: sub-categorias (escondido até escolher Residencial ou Empresarial) -->
-        <div id="tipo-cliente-sub" class="tipo-cliente-sub hidden">
-          <button type="button" class="btn-voltar-grupos" id="btn-voltar-grupos" data-tooltip="Voltar à escolha entre Residencial e Empresarial.">
-            <i class="fa-solid fa-arrow-left"></i> Voltar
-          </button>
-          <div class="sub-grupos-titulo" id="sub-grupos-titulo">—</div>
-          <div id="tipo-cliente-grid" class="tipo-cliente-grid"></div>
-        </div>
+          <div class="tipo-cliente-footnote">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Os valores de Taxa Fixa e Tarifa aplicam-se automaticamente ao cálculo. A potência contratada (Pc) usa
+              o valor por omissão de cada categoria, ajustável no painel de Resultados.</span>
+          </div>
+        </section>
 
-        <div class="tipo-cliente-footnote">
-          <i class="fa-solid fa-circle-info"></i>
-          <span>Os valores de Taxa Fixa e Tarifa aplicam-se automaticamente ao cálculo. A potência contratada (Pc) usa o valor por omissão de cada categoria, ajustável no painel de Resultados.</span>
-        </div>
-      </section>
+        <!-- PANEL 1 — INVENTÁRIO -->
+        <section class="panel" id="panel-1">
+          <div class="section-title"><i class="fa-solid fa-house-chimney"></i>Equipamentos da habitação</div>
+          <p class="section-hint">Adicione tudo o que está ligado à rede em sua casa</p>
+          <div id="device-list-inv" class="device-list"></div>
+          <div id="empty-inv" class="empty-state hidden">
+            <i class="fa-solid fa-plug-circle-xmark"></i>
+            <strong>Ainda não há equipamentos</strong>
+            <p>Toque em "Adicionar equipamento" para começar.</p>
+          </div>
+          <button id="btn-open-sheet" class="add-launcher"
+            data-tooltip="Abre o catálogo de equipamentos (com conversor de BTU/A-V/cv para Watts)."><i
+              class="fa-solid fa-plus"></i> Adicionar equipamento</button>
+        </section>
 
-      <!-- PANEL 1 — INVENTÁRIO -->
-      <section class="panel" id="panel-1">
-        <div class="section-title"><i class="fa-solid fa-house-chimney"></i>Equipamentos da habitação</div>
-        <p class="section-hint">Adicione tudo o que está ligado à rede em sua casa</p>
-        <div id="device-list-inv" class="device-list"></div>
-        <div id="empty-inv" class="empty-state hidden">
-          <i class="fa-solid fa-plug-circle-xmark"></i>
-          <strong>Ainda não há equipamentos</strong>
-          <p>Toque em "Adicionar equipamento" para começar.</p>
-        </div>
-        <button id="btn-open-sheet" class="add-launcher" data-tooltip="Abre o catálogo de equipamentos (com conversor de BTU/A-V/cv para Watts)."><i class="fa-solid fa-plus"></i> Adicionar equipamento</button>
-      </section>
+        <!-- PANEL 2 — HORAS -->
+        <section class="panel" id="panel-2">
+          <div class="section-title"><i class="fa-regular fa-hourglass-half"></i>Horas de utilização diária</div>
+          <p class="section-hint">Quanto tempo por dia cada equipamento fica ligado</p>
+          <div id="device-list-hours" class="device-list"></div>
+          <div id="empty-hours" class="empty-state hidden">
+            <i class="fa-regular fa-clock"></i>
+            <strong>Sem equipamentos para configurar</strong>
+            <p>Volte ao Inventário e adicione pelo menos um equipamento.</p>
+          </div>
+        </section>
 
-      <!-- PANEL 2 — HORAS -->
-      <section class="panel" id="panel-2">
-        <div class="section-title"><i class="fa-regular fa-hourglass-half"></i>Horas de utilização diária</div>
-        <p class="section-hint">Quanto tempo por dia cada equipamento fica ligado</p>
-        <div id="device-list-hours" class="device-list"></div>
-        <div id="empty-hours" class="empty-state hidden">
-          <i class="fa-regular fa-clock"></i>
-          <strong>Sem equipamentos para configurar</strong>
-          <p>Volte ao Inventário e adicione pelo menos um equipamento.</p>
-        </div>
-      </section>
+        <!-- PANEL 3 — RESULTADOS -->
+        <section class="panel" id="panel-3">
+          <div class="section-title"><i class="fa-solid fa-file-invoice"></i>Painel de resultados</div>
 
-      <!-- PANEL 3 — RESULTADOS -->
-      <section class="panel" id="panel-3">
-        <div class="section-title"><i class="fa-solid fa-file-invoice"></i>Painel de resultados</div>
+          <div id="empty-results" class="empty-state hidden" style="margin-top:14px;">
+            <i class="fa-solid fa-chart-pie"></i>
+            <strong>Ainda sem dados para calcular</strong>
+            <p>Adicione equipamentos e defina as horas de uso.</p>
+          </div>
 
-        <div id="empty-results" class="empty-state hidden" style="margin-top:14px;">
-          <i class="fa-solid fa-chart-pie"></i>
-          <strong>Ainda sem dados para calcular</strong>
-          <p>Adicione equipamentos e defina as horas de uso.</p>
-        </div>
-
-        <div id="results-wrap">
-          <!-- Banner "Você é do tipo X" — apresentado em destaque no topo dos resultados.
+          <div id="results-wrap">
+            <!-- Banner "Você é do tipo X" — apresentado em destaque no topo dos resultados.
                A categoria é detectada automaticamente pelo Pc (validarCategoriaSelecionada).
                Se houver divergência entre a escolha do utilizador e o Pc, o banner mostra
                a categoria CORRIGIDA com um ícone de aviso. -->
-          <div class="categoria-banner" id="categoria-banner">
-            <div class="categoria-banner-icon"><i class="fa-solid fa-user-tag"></i></div>
-            <div class="categoria-banner-body">
-              <div class="categoria-banner-label">Você é do tipo</div>
-              <div class="categoria-banner-nome" id="categoria-banner-nome">—</div>
-              <div class="categoria-banner-sub" id="categoria-banner-sub"></div>
+            <div class="categoria-banner" id="categoria-banner">
+              <div class="categoria-banner-icon"><i class="fa-solid fa-user-tag"></i></div>
+              <div class="categoria-banner-body">
+                <div class="categoria-banner-label">Você é do tipo</div>
+                <div class="categoria-banner-nome" id="categoria-banner-nome">—</div>
+                <div class="categoria-banner-sub" id="categoria-banner-sub"></div>
+              </div>
+              <button type="button" class="categoria-banner-change" id="categoria-banner-change"
+                data-tooltip="Voltar à tab Tipo de Cliente para trocar a categoria.">
+                <i class="fa-solid fa-arrow-rotate-left"></i> Trocar
+              </button>
             </div>
-            <button type="button" class="categoria-banner-change" id="categoria-banner-change" data-tooltip="Voltar à tab Tipo de Cliente para trocar a categoria.">
-              <i class="fa-solid fa-arrow-rotate-left"></i> Trocar
-            </button>
-          </div>
 
-          <div class="tariff-box">
-            <!-- Select de categoria escondido — agora a categoria é detectada automaticamente
+            <div class="tariff-box">
+              <!-- Select de categoria escondido — agora a categoria é detectada automaticamente
                  pelo Pc. Mantido no DOM (hidden) para não quebrar a lógica do ende.js que o
                  referencia. O utilizador vê apenas o badge acima. -->
-            <div class="tariff-row hidden" aria-hidden="true">
-              <label for="categoria-select"><i class="fa-solid fa-file-invoice-dollar" style="color:var(--orange-deep);margin-right:6px;"></i>Categoria tarifária</label>
-              <select id="categoria-select">
-                <option value="bt-social1">1 · BT Doméstico Social 1</option>
-                <option value="bt-social2">2 · BT Doméstico Social 2</option>
-                <option value="bt-mono">3 · BT Doméstico Monofásico</option>
-                <option value="bt-trif">4 · BT Doméstico Especial Trifásico</option>
-                <option value="bt-ind">5 · BT Industrial</option>
-                <option value="bt-cs">6 · BT Comércio e Serviço (M.F./Trifásico)</option>
-                <option value="mt-ind">7 · MT Indústria</option>
-                <option value="at-ind">8 · AT Indústria</option>
-              </select>
-            </div>
-            <!-- Pc EDITÁVEL — agora é a única forma de o utilizador influenciar a categoria.
+              <div class="tariff-row hidden" aria-hidden="true">
+                <label for="categoria-select"><i class="fa-solid fa-file-invoice-dollar"
+                    style="color:var(--orange-deep);margin-right:6px;"></i>Categoria tarifária</label>
+                <select id="categoria-select">
+                  <option value="bt-social1">1 · BT Doméstico Social 1</option>
+                  <option value="bt-social2">2 · BT Doméstico Social 2</option>
+                  <option value="bt-mono">3 · BT Doméstico Monofásico</option>
+                  <option value="bt-trif">4 · BT Doméstico Especial Trifásico</option>
+                  <option value="bt-ind">5 · BT Industrial</option>
+                  <option value="bt-cs">6 · BT Comércio e Serviço (M.F./Trifásico)</option>
+                  <option value="mt-ind">7 · MT Indústria</option>
+                  <option value="at-ind">8 · AT Indústria</option>
+                </select>
+              </div>
+              <!-- Pc EDITÁVEL — agora é a única forma de o utilizador influenciar a categoria.
                  Ao mudar o Pc, o sistema revalida a categoria automaticamente (ver pcInput
                  'input' handler no ende.js) e mostra um alerta se a categoria detectada for
                  diferente da escolhida. -->
-            <div class="tariff-row" data-tooltip="A Potência Contratada (Pc) é quem define a tua categoria tarifária. Ao mudar este valor, o sistema revalida automaticamente a categoria correcta.">
-              <label for="pc-input"><i class="fa-solid fa-bolt" style="color:var(--orange-deep);margin-right:6px;"></i>Potência contratada (Pc)</label>
-              <div class="tariff-input-wrap">
-                <input type="number" id="pc-input" step="0.1" min="0" value="6.6">
-                <span class="unit">kVA</span>
+              <div class="tariff-row"
+                data-tooltip="A Potência Contratada (Pc) é quem define a tua categoria tarifária. Ao mudar este valor, o sistema revalida automaticamente a categoria correcta.">
+                <label for="pc-input"><i class="fa-solid fa-bolt"
+                    style="color:var(--orange-deep);margin-right:6px;"></i>Potência contratada (Pc)</label>
+                <div class="tariff-input-wrap">
+                  <input type="number" id="pc-input" step="0.1" min="0" value="6.6">
+                  <span class="unit">kVA</span>
+                </div>
               </div>
-            </div>
-            <div class="tariff-row" data-tooltip="Tarifa aplicada a cada kWh consumido. Repõe o valor oficial da categoria sempre que se troca de categoria.">
-              <label for="tarifa-input"><i class="fa-solid fa-coins" style="color:var(--orange-deep);margin-right:6px;"></i>Tarifa (Kz/kWh)</label>
-              <div class="tariff-input-wrap">
-                <input type="number" id="tarifa-input" step="0.01" min="0" value="14.16">
-                <span class="unit">Kz/kWh</span>
+              <div class="tariff-row"
+                data-tooltip="Tarifa aplicada a cada kWh consumido. Repõe o valor oficial da categoria sempre que se troca de categoria.">
+                <label for="tarifa-input"><i class="fa-solid fa-coins"
+                    style="color:var(--orange-deep);margin-right:6px;"></i>Tarifa (Kz/kWh)</label>
+                <div class="tariff-input-wrap">
+                  <input type="number" id="tarifa-input" step="0.01" min="0" value="14.16">
+                  <span class="unit">Kz/kWh</span>
+                </div>
               </div>
+              <p class="tariff-note" id="aviso-grandes" style="color:var(--danger);font-weight:700;display:none;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Ainda não há tarifário oficial publicado para Grandes
+                Clientes.
+              </p>
+              <p class="tariff-note">Taxa fixa <strong id="taxa-fixa-aplicada">117</strong> Kz × PC. Imposto de 14%
+                incluído no custo diário e no custo mensal (mesma fórmula, só muda o consumo considerado). Valores de
+                referência — confirme com a categoria real do cliente.</p>
             </div>
-            <p class="tariff-note" id="aviso-grandes" style="color:var(--danger);font-weight:700;display:none;">
-              <i class="fa-solid fa-triangle-exclamation"></i> Ainda não há tarifário oficial publicado para Grandes Clientes.
-            </p>
-            <p class="tariff-note">Taxa fixa <strong id="taxa-fixa-aplicada">117</strong> Kz × PC. Imposto de 14% incluído no custo diário e no custo mensal (mesma fórmula, só muda o consumo considerado). Valores de referência — confirme com a categoria real do cliente.</p>
-          </div>
 
-          <div class="stat-grid">
-            <!-- Tarefa 3: novo cartão de leitura para a Potência Contratada (PC).
+            <div class="stat-grid">
+              <!-- Tarefa 3: novo cartão de leitura para a Potência Contratada (PC).
                  Antes era um campo editável na tariff-box; agora é só leitura,
                  valor proveniente de state.pc (default 6,6 kVA). -->
-            <div class="stat-card stat-pc"
-                 data-tooltip="Potência contratada com a ENDE — usada para calcular a taxa fixa (TaxaFixa × Pc) que compõe o custo mensal.">
-              <div class="stat-label"><i class="fa-solid fa-bolt"></i>Potência Contratada</div>
-              <div class="stat-value"><span id="v-pc">6,6</span><span class="stat-unit">kVA</span></div>
-              <div class="stat-sub">taxa fixa: <strong id="v-taxa-fixa">117</strong> Kz/kVA</div>
+              <div class="stat-card stat-pc"
+                data-tooltip="Potência contratada com a ENDE — usada para calcular a taxa fixa (TaxaFixa × Pc) que compõe o custo mensal.">
+                <div class="stat-label"><i class="fa-solid fa-bolt"></i>Potência Contratada</div>
+                <div class="stat-value"><span id="v-pc">6,6</span><span class="stat-unit">kVA</span></div>
+                <div class="stat-sub">taxa fixa: <strong id="v-taxa-fixa">117</strong> Kz/kVA</div>
+              </div>
+              <div class="stat-card"
+                data-tooltip="Soma do consumo de todos os equipamentos × horas/dia. kWh = Potência (W) × Qtd × Horas ÷ 1000.">
+                <div class="stat-label"><i class="fa-solid fa-bolt"></i>Consumo diário</div>
+                <div class="stat-value"><span id="v-kwh-dia">0,00</span><span class="stat-unit">kWh</span></div>
+              </div>
+              <div class="stat-card" data-tooltip="Estimativa do consumo para 30 dias (Consumo diário × 30).">
+                <div class="stat-label"><i class="fa-regular fa-calendar"></i>Consumo mensal</div>
+                <div class="stat-value"><span id="v-kwh-mes">0,00</span><span class="stat-unit">kWh</span></div>
+                <div class="stat-sub">estimativa para 30 dias</div>
+              </div>
+              <div class="stat-card highlight"
+                data-tooltip="Custo diário = (TaxaFixa × Pc + Tarifa × Consumo diário) × 1,14 (IVA 14% incluído).">
+                <div class="stat-label"><i class="fa-solid fa-sack-dollar"></i>Custo diário</div>
+                <div class="stat-value"><span id="v-kz-dia">0</span><span class="stat-unit">Kz</span></div>
+              </div>
+              <div class="stat-card highlight"
+                data-tooltip="Custo mensal = (TaxaFixa × Pc + Tarifa × Consumo mensal) × 1,14 (IVA 14% incluído).">
+                <div class="stat-label"><i class="fa-solid fa-file-invoice-dollar"></i>Custo mensal</div>
+                <div class="stat-value"><span id="v-kz-mes">0</span><span class="stat-unit">Kz</span></div>
+                <div class="stat-sub" id="top-consumer-sub">—</div>
+              </div>
             </div>
-            <div class="stat-card"
-                 data-tooltip="Soma do consumo de todos os equipamentos × horas/dia. kWh = Potência (W) × Qtd × Horas ÷ 1000.">
-              <div class="stat-label"><i class="fa-solid fa-bolt"></i>Consumo diário</div>
-              <div class="stat-value"><span id="v-kwh-dia">0,00</span><span class="stat-unit">kWh</span></div>
-            </div>
-            <div class="stat-card"
-                 data-tooltip="Estimativa do consumo para 30 dias (Consumo diário × 30).">
-              <div class="stat-label"><i class="fa-regular fa-calendar"></i>Consumo mensal</div>
-              <div class="stat-value"><span id="v-kwh-mes">0,00</span><span class="stat-unit">kWh</span></div>
-              <div class="stat-sub">estimativa para 30 dias</div>
-            </div>
-            <div class="stat-card highlight"
-                 data-tooltip="Custo diário = (TaxaFixa × Pc + Tarifa × Consumo diário) × 1,14 (IVA 14% incluído).">
-              <div class="stat-label"><i class="fa-solid fa-sack-dollar"></i>Custo diário</div>
-              <div class="stat-value"><span id="v-kz-dia">0</span><span class="stat-unit">Kz</span></div>
-            </div>
-            <div class="stat-card highlight"
-                 data-tooltip="Custo mensal = (TaxaFixa × Pc + Tarifa × Consumo mensal) × 1,14 (IVA 14% incluído).">
-              <div class="stat-label"><i class="fa-solid fa-file-invoice-dollar"></i>Custo mensal</div>
-              <div class="stat-value"><span id="v-kz-mes">0</span><span class="stat-unit">Kz</span></div>
-              <div class="stat-sub" id="top-consumer-sub">—</div>
-            </div>
-          </div>
 
-          <div class="resultado-grid">
-            <div class="grafico-card">
-              <div class="section-title" style="font-size:.9rem;margin-bottom:12px;"><i class="fa-solid fa-chart-simple"></i>Distribuição do consumo</div>
-              <canvas id="grafico-consumo"></canvas>
+            <div class="resultado-grid">
+              <div class="grafico-card">
+                <div class="section-title" style="font-size:.9rem;margin-bottom:12px;"><i
+                    class="fa-solid fa-chart-simple"></i>Distribuição do consumo</div>
+                <canvas id="grafico-consumo"></canvas>
+              </div>
+              <div>
+                <div class="section-title" style="font-size:.9rem;margin-bottom:12px;"><i
+                    class="fa-solid fa-ranking-star"></i>Maiores consumidores</div>
+                <div id="breakdown-list"></div>
+              </div>
             </div>
-            <div>
-              <div class="section-title" style="font-size:.9rem;margin-bottom:12px;"><i class="fa-solid fa-ranking-star"></i>Maiores consumidores</div>
-              <div id="breakdown-list"></div>
-            </div>
-          </div>
 
-          <!-- QR CODE -->
-          <div class="qr-box" data-tooltip="Escaneie com a câmara do telemóvel para seguir a ENDE no Facebook e receber mais dicas de poupança de energia.">
-            <div class="qr-imagem" id="qr-instagram"></div>
-            <div class="qr-texto">
-              <strong><i class="fa-brands fa-facebook"></i>Siga a ENDE</strong>
-              <p>Gostou do simulador? Escaneie aqui para seguir a ENDE no Facebook e aprender mais dicas de poupança!</p>
-            </div>
-          </div>
-
-          <!-- ANOMALIA -->
-          <div class="anomaly-box" data-tooltip="Simulação pedagógica: quanto custaria se um equipamento ficasse ligado 24h/dia em vez das horas definidas no Período de Uso.">
-            <div class="box-title"><i class="fa-solid fa-triangle-exclamation"></i>Simular esquecimento / desperdício</div>
-            <div class="anomaly-controls">
-              <select id="anomaly-select"><option value="">-- Seleccionar equipamento --</option></select>
-              <button id="btn-anomaly" class="btn btn-outline btn-sm"><i class="fa-solid fa-clock"></i> Simular 24h ligado</button>
-            </div>
-            <div id="anomaly-result" class="anomaly-result"></div>
-          </div>
-
-          <!-- CONSELHO -->
-          <div class="advice-box" data-tooltip="Recomendação personalizada do técnico da ENDE. Pode escolher uma sugestão pré-definida ou escrever a sua.">
-            <div class="section-title" style="font-size:.9rem;margin-bottom:12px;"><i class="fa-solid fa-user-check"></i>Conselho do técnico ENDE</div>
-            <select id="preset-advice">
-              <option value="">-- Sugestões pré-definidas --</option>
-              <option>Substitua lâmpadas incandescentes por lâmpadas LED.</option>
-              <option>Desligue os aparelhos que ficam em modo stand-by.</option>
-              <option>Reduza a abertura desnecessária do frigorífico.</option>
-              <option>Utilize o ar condicionado apenas no período mais quente do dia.</option>
-              <option>Evite ligar vários electrodomésticos de alta potência ao mesmo tempo.</option>
-            </select>
-            <textarea id="advice-text" placeholder="Escreva aqui uma recomendação personalizada..."></textarea>
-          </div>
-
-          <!-- EXPORTAR PDF + FINALIZAR -->
-          <div class="botoes-finais">
-            <button id="btn-exportar-pdf" class="btn btn-outline btn-exportar" data-tooltip="Gera um relatório em PDF com os equipamentos, consumos, custos e gráfico para o visitante levar.">
-              <i class="fa-solid fa-file-pdf"></i> Exportar Relatório (PDF)
-            </button>
-            <button id="btn-finalizar" class="btn btn-brand btn-finalizar" data-tooltip="Termina a simulação e convida o visitante a tirar uma selfie com o robô da ENDE.">
-              <i class="fa-solid fa-flag-checkered"></i> Finalizar Simulação
-            </button>
-          </div>
-        </div>
-      </section>
- <p
-                    style="margin-top:14px;font-size:.76rem;color:var(--graphite-2);display:flex;align-items:center;gap:6px;">
-                    <i class="fa-solid fa-shield-halved"></i> Os dados ficam guardados apenas neste dispositivo.
+            <!-- QR CODE -->
+            <div class="qr-box"
+              data-tooltip="Escaneie com a câmara do telemóvel para seguir a ENDE no Facebook e receber mais dicas de poupança de energia.">
+              <div class="qr-imagem" id="qr-instagram"></div>
+              <div class="qr-texto">
+                <strong><i class="fa-brands fa-facebook"></i>Siga a ENDE</strong>
+                <p>Gostou do simulador? Escaneie aqui para seguir a ENDE no Facebook e aprender mais dicas de poupança!
                 </p>
-                <div class="border-top">
-                    <!-- FOOTER -->
-                    <footer class="footer d-flex justify-content-between py-7 mt-3">
-                        <span class="brand-credit">Powered By SOLUTEC AO for ENDE · Simulador v2.0</span>
-                        <button id="btn-reset" class="btn btn-danger-outline btn-sm" data-tooltip="Apaga todos os equipamentos e repõe a categoria/PC/tarifa para os valores por omissão.">
-                            <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar simulador
-                        </button>
-                    </footer>
-                </div>
-    </div>
-  </div>
-</section>
+              </div>
+            </div>
 
-<!-- ================================================================
+            <!-- ANOMALIA -->
+            <div class="anomaly-box"
+              data-tooltip="Simulação pedagógica: quanto custaria se um equipamento ficasse ligado 24h/dia em vez das horas definidas no Período de Uso.">
+              <div class="box-title"><i class="fa-solid fa-triangle-exclamation"></i>Simular esquecimento / desperdício
+              </div>
+              <div class="anomaly-controls">
+                <select id="anomaly-select">
+                  <option value="">-- Seleccionar equipamento --</option>
+                </select>
+                <button id="btn-anomaly" class="btn btn-outline btn-sm"><i class="fa-solid fa-clock"></i> Simular 24h
+                  ligado</button>
+              </div>
+              <div id="anomaly-result" class="anomaly-result"></div>
+            </div>
+
+            <!-- CONSELHO -->
+            <div class="advice-box"
+              data-tooltip="Recomendação personalizada do técnico da ENDE. Pode escolher uma sugestão pré-definida ou escrever a sua.">
+              <div class="section-title" style="font-size:.9rem;margin-bottom:12px;"><i
+                  class="fa-solid fa-user-check"></i>Conselho do técnico ENDE</div>
+              <select id="preset-advice">
+                <option value="">-- Sugestões pré-definidas --</option>
+                <option>Substitua lâmpadas incandescentes por lâmpadas LED.</option>
+                <option>Desligue os aparelhos que ficam em modo stand-by.</option>
+                <option>Reduza a abertura desnecessária do frigorífico.</option>
+                <option>Utilize o ar condicionado apenas no período mais quente do dia.</option>
+                <option>Evite ligar vários electrodomésticos de alta potência ao mesmo tempo.</option>
+              </select>
+              <textarea id="advice-text" placeholder="Escreva aqui uma recomendação personalizada..."></textarea>
+            </div>
+
+            <!-- EXPORTAR PDF + FINALIZAR -->
+            <div class="botoes-finais">
+              <button id="btn-exportar-pdf" class="btn btn-outline btn-exportar"
+                data-tooltip="Gera um relatório em PDF com os equipamentos, consumos, custos e gráfico para o visitante levar.">
+                <i class="fa-solid fa-file-pdf"></i> Exportar Relatório (PDF)
+              </button>
+              <button id="btn-finalizar" class="btn btn-brand btn-finalizar"
+                data-tooltip="Termina a simulação e convida o visitante a tirar uma selfie com o robô da ENDE.">
+                <i class="fa-solid fa-flag-checkered"></i> Finalizar Simulação
+              </button>
+            </div>
+          </div>
+        </section>
+        <p style="margin-top:14px;font-size:.76rem;color:var(--graphite-2);display:flex;align-items:center;gap:6px;">
+          <i class="fa-solid fa-shield-halved"></i> Os dados ficam guardados apenas neste dispositivo.
+        </p>
+        <div class="border-top">
+          <!-- FOOTER -->
+          <footer class="footer d-flex justify-content-between py-7 mt-3">
+            <span class="brand-credit">Powered By SOLUTEC AO for ENDE · Simulador v2.0</span>
+            <button id="btn-reset" class="btn btn-danger-outline btn-sm"
+              data-tooltip="Apaga todos os equipamentos e repõe a categoria/PC/tarifa para os valores por omissão.">
+              <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar simulador
+            </button>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================
      TELA 3 — MODO SELFIE
      Substituir "robo-sorriso.png" (sorriso) e "robo-sauda.png" (saudação).
      ================================================================ -->
-<section class="tela tela-selfie hidden" id="tela-selfie" data-tela="selfie">
-  <div class="robo-selfie-wrap">
-    <img src="img/robo-sorriso.png" alt="Robô da ENDE a sorrir" class="robo-selfie-img" id="robo-img-selfie" onerror="handleRoboError(this,'robo-placeholder-selfie')">
-    <div class="hidden" id="robo-placeholder-selfie"><i class="fa-solid fa-face-smile-beam"></i></div>
-  </div>
-  <p id="selfie-legenda">Sorria! Tire uma fotografia com o robô da ENDE para recordar a FILDA 2026.</p>
-  <button class="btn-falar btn-pronto" id="btn-selfie-pronto"><i class="fa-solid fa-camera"></i> Pronto!</button>
-
-  <div class="selfie-caption-bar">
-    <i class="fa-solid fa-bolt"></i><span>#ENDEnaFILDA2026 · Literacia Enérgetica</span>
-  </div>
-</section>
-
-<!-- SHEET: adicionar equipamento -->
-<div class="overlay" id="overlay"></div>
-<div class="sheet" id="add-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head">
-    <h3 id="sheet-title">Adicionar equipamento</h3>
-    <button class="sheet-close" id="sheet-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
-  </div>
-  <div class="sheet-mode">
-    <button class="mode-btn active" data-mode="catalogo">Catálogo</button>
-    <button class="mode-btn" data-mode="personalizado">Personalizado</button>
-  </div>
-  <div class="sheet-body">
-    <div id="mode-catalogo">
-      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="catalog-search" placeholder="Procurar equipamento..."></div>
-      <div class="cat-chips" id="cat-chips"></div>
-      <div id="catalog-results"></div>
+  <section class="tela tela-selfie hidden" id="tela-selfie" data-tela="selfie">
+    <div class="robo-selfie-wrap">
+      <img src="img/robo-sorriso.png" alt="Robô da ENDE a sorrir" class="robo-selfie-img" id="robo-img-selfie"
+        onerror="handleRoboError(this,'robo-placeholder-selfie')">
+      <div class="hidden" id="robo-placeholder-selfie"><i class="fa-solid fa-face-smile-beam"></i></div>
     </div>
-    <div id="mode-personalizado" class="hidden">
-      <div class="form-grid">
-        <div class="form-field"><label for="custom-name">Nome do equipamento</label><input type="text" id="custom-name" placeholder="Ex: Bomba de piscina, Aquário..."></div>
+    <p id="selfie-legenda">Sorria! Tire uma fotografia com o robô da ENDE para recordar a FILDA 2026.</p>
+    <button class="btn-falar btn-pronto" id="btn-selfie-pronto"><i class="fa-solid fa-camera"></i> Pronto!</button>
 
-        <div class="form-field">
-          <label for="custom-unit">Tenho o valor de potência em</label>
-          <select id="custom-unit">
-            <option value="w">Watts (W) — valor direto</option>
-            <option value="btu">BTU/h (Ar Condicionado)</option>
-            <option value="av">Amperes (A) × Volts (V)</option>
-            <option value="cv">cv (Cavalo Vapor)</option>
-          </select>
-        </div>
+    <div class="selfie-caption-bar">
+      <i class="fa-solid fa-bolt"></i><span>#ENDEnaFILDA2026 · Literacia Enérgetica</span>
+    </div>
+  </section>
 
-        <div class="form-row hidden" id="conv-btu">
-          <div class="form-field"><label for="conv-btu-valor">Capacidade (BTU/h)</label><input type="number" id="conv-btu-valor" min="0" step="1" placeholder="Ex: 9000"></div>
-          <div class="form-field"><label for="conv-btu-tipo">Tecnologia</label>
-            <select id="conv-btu-tipo">
-              <option value="convencional">Convencional</option>
-              <option value="inverter">Inverter</option>
+  <!-- SHEET: adicionar equipamento -->
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet" id="add-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h3 id="sheet-title">Adicionar equipamento</h3>
+      <button class="sheet-close" id="sheet-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sheet-mode">
+      <button class="mode-btn active" data-mode="catalogo">Catálogo</button>
+      <button class="mode-btn" data-mode="personalizado">Personalizado</button>
+    </div>
+    <div class="sheet-body">
+      <div id="mode-catalogo">
+        <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="catalog-search"
+            placeholder="Procurar equipamento..."></div>
+        <div class="cat-chips" id="cat-chips"></div>
+        <div id="catalog-results"></div>
+      </div>
+      <div id="mode-personalizado" class="hidden">
+        <div class="form-grid">
+          <div class="form-field"><label for="custom-name">Nome do equipamento</label><input type="text"
+              id="custom-name" placeholder="Ex: Bomba de piscina, Aquário..."></div>
+
+          <div class="form-field">
+            <label for="custom-unit">Tenho o valor de potência em</label>
+            <select id="custom-unit">
+              <option value="w">Watts (W) — valor direto</option>
+              <option value="btu">BTU/h (Ar Condicionado)</option>
+              <option value="av">Amperes (A) × Volts (V)</option>
+              <option value="cv">cv (Cavalo Vapor)</option>
             </select>
           </div>
-        </div>
-        <div class="form-row hidden" id="conv-av">
-          <div class="form-field"><label for="conv-av-a">Amperes (A)</label><input type="number" id="conv-av-a" min="0" step="0.1" placeholder="Ex: 2"></div>
-          <div class="form-field"><label for="conv-av-v">Volts (V)</label><input type="number" id="conv-av-v" min="0" step="1" value="220"></div>
-        </div>
-        <div class="form-row hidden" id="conv-cv">
-          <div class="form-field"><label for="conv-cv-valor">Potência (cv)</label><input type="number" id="conv-cv-valor" min="0" step="0.1" placeholder="Ex: 1"></div>
-        </div>
-        <p class="tariff-note hidden" id="conv-resultado-nota">
-          Convertido automaticamente para <strong id="conv-resultado-w">0</strong> W — o valor de COP varia por marca/modelo, ajusta o campo "Potência (W)" abaixo se souberes o valor exacto.
-        </p>
 
-        <div class="form-row">
-          <div class="form-field"><label for="custom-watts">Potência (W)</label><input type="number" id="custom-watts" min="1" step="1" placeholder="Ex: 350"></div>
-          <div class="form-field"><label for="custom-qty">Quantidade</label><input type="number" id="custom-qty" min="1" step="1" value="1"></div>
+          <div class="form-row hidden" id="conv-btu">
+            <div class="form-field"><label for="conv-btu-valor">Capacidade (BTU/h)</label><input type="number"
+                id="conv-btu-valor" min="0" step="1" placeholder="Ex: 9000"></div>
+            <div class="form-field"><label for="conv-btu-tipo">Tecnologia</label>
+              <select id="conv-btu-tipo">
+                <option value="convencional">Convencional</option>
+                <option value="inverter">Inverter</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row hidden" id="conv-av">
+            <div class="form-field"><label for="conv-av-a">Amperes (A)</label><input type="number" id="conv-av-a"
+                min="0" step="0.1" placeholder="Ex: 2"></div>
+            <div class="form-field"><label for="conv-av-v">Volts (V)</label><input type="number" id="conv-av-v" min="0"
+                step="1" value="220"></div>
+          </div>
+          <div class="form-row hidden" id="conv-cv">
+            <div class="form-field"><label for="conv-cv-valor">Potência (cv)</label><input type="number"
+                id="conv-cv-valor" min="0" step="0.1" placeholder="Ex: 1"></div>
+          </div>
+          <p class="tariff-note hidden" id="conv-resultado-nota">
+            Convertido automaticamente para <strong id="conv-resultado-w">0</strong> W — o valor de COP varia por
+            marca/modelo, ajusta o campo "Potência (W)" abaixo se souberes o valor exacto.
+          </p>
+
+          <div class="form-row">
+            <div class="form-field"><label for="custom-watts">Potência (W)</label><input type="number" id="custom-watts"
+                min="1" step="1" placeholder="Ex: 350"></div>
+            <div class="form-field"><label for="custom-qty">Quantidade</label><input type="number" id="custom-qty"
+                min="1" step="1" value="1"></div>
+          </div>
+          <button id="btn-add-custom" class="btn btn-brand btn-block"><i class="fa-solid fa-plus"></i> Adicionar à
+            lista</button>
         </div>
-        <button id="btn-add-custom" class="btn btn-brand btn-block"><i class="fa-solid fa-plus"></i> Adicionar à lista</button>
       </div>
+
     </div>
-
   </div>
-</div>
 
-    <!-- ===================== Scripts =====================
+  <!-- ===================== Scripts =====================
          Carrega primeiro a versão local (modo kiosk offline); se falhar,
          recorre automaticamente ao CDN. Isto garante que o totem funciona
          mesmo em ambientes onde um dos ficheiros locais esteja em falta. -->
-    <script>
+  <script>
     // Helper: carrega um script com fallback automático local → CDN
-    function loadScript(localSrc, cdnSrc, onLoad, onError){
+    function loadScript(localSrc, cdnSrc, onLoad, onError) {
       const s = document.createElement('script');
       s.src = localSrc;
       s.onload = onLoad;
-      s.onerror = function(){
+      s.onerror = function () {
         console.warn('[ENDE] Ficheiro local não encontrado:', localSrc, '→ recorrendo ao CDN:', cdnSrc);
         const s2 = document.createElement('script');
         s2.src = cdnSrc;
         s2.onload = onLoad;
-        s2.onerror = onError || function(){ console.error('[ENDE] Falha também no CDN:', cdnSrc); };
+        s2.onerror = onError || function () { console.error('[ENDE] Falha também no CDN:', cdnSrc); };
         document.head.appendChild(s2);
       };
       document.head.appendChild(s);
@@ -457,8 +512,8 @@
     loadScript('js/bootstrap.bundle.min.js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js');
     // 2. SweetAlert2 (CRÍTICO — usado para os diálogos de validação de categoria, selfie, etc.)
     loadScript('js/sweetalert2@11.js', 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js',
-      function(){ window.__SWEETALERT_LOADED__ = true; },
-      function(){ console.error('[ENDE] SweetAlert2 não pôde ser carregado — diálogos vão falhar.'); }
+      function () { window.__SWEETALERT_LOADED__ = true; },
+      function () { console.error('[ENDE] SweetAlert2 não pôde ser carregado — diálogos vão falhar.'); }
     );
     // 3. Chart.js (gráfico de rosca no painel de Resultados)
     loadScript('js/chart.umd.min.js', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
@@ -470,16 +525,16 @@
     loadScript('js/html2canvas.min.js', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
     // 5. Dados do simulador (categorias, tarifários, catálogo) — sem CDN,
     //    são dados próprios do projeto, não uma lib pública.
-    loadScript('js/ende-data.js?v=20260719', null, null, function(){
+    loadScript('js/ende-data.js?v=20260719', null, null, function () {
       console.error('[ENDE] Falha ao carregar js/ende-data.js — o totem não vai funcionar.');
     });
     // 6. Lógica principal — carrega DEPOIS dos dados e das bibliotecas
     // Usamos cache-busting (v=20260719) para garantir que o browser
     // não serve uma versão antiga do ende.js durante o desenvolvimento.
-    loadScript('js/ende.js?v=20260719', null, null, function(){
+    loadScript('js/ende.js?v=20260719', null, null, function () {
       console.error('[ENDE] Falha ao carregar js/ende.js — o totem não vai funcionar.');
     });
-    </script>
+  </script>
 </body>
 
 </html>

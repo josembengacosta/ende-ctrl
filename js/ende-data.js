@@ -36,16 +36,16 @@ const TARIFARIOS = {
                   pcMin:13.2, pcMax:49.9, pcDefault:13.2 },
   'bt-ind':     { label:'BT Industrial',              short:'BT-Ind',      taxaFixa:130,  tarifaKwh:19.17,
                   descricao:'Cliente industrial em baixa tensão (monofásico ou trifásico).',
-                  pcMin:1, pcMax:999, pcDefault:13.2 },
+                  pcMin:3.3, pcMax:49.9, pcOptions:[3.3,4.4,6.6,9.9], pcDefault:6.6 },
   'bt-cs':      { label:'BT Comércio e Serviço',      short:'BT-Com/Serv', taxaFixa:130,  tarifaKwh:16.67,
                   descricao:'Cliente de comércio e serviços em baixa tensão (monofásico ou trifásico).',
-                  pcMin:1, pcMax:999, pcDefault:13.2 },
-  'mt-ind':     { label:'MT Indústria',               short:'MT-Ind',      taxaFixa:239.20, tarifaKwh:14.99,
+                  pcMin:3.3, pcMax:49.9, pcOptions:[3.3,4.4,6.6,9.9], pcDefault:6.6 },
+  'mt-ind':     { label:'MT Indústria',               short:'MT-Ind',      taxaFixa:208.00, tarifaKwh:12.49,
                   descricao:'Cliente industrial em média tensão.',
-                  pcMin:1, pcMax:9999, pcDefault:100 },
-  'at-ind':     { label:'AT Indústria',                short:'AT-Ind',      taxaFixa:239.20, tarifaKwh:14.99,
-                  descricao:'Cliente industrial em alta tensão. Valores replicados do MT-Ind (a confirmar o oficial).',
-                  pcMin:1, pcMax:99999, pcDefault:1000, revisao:true }
+                  pcMin:50, pcMax:9999, pcDefault:100 },
+  'at-ind':     { label:'AT Indústria',               short:'AT-Ind',      taxaFixa:149.50, tarifaKwh:15.00,
+                  descricao:'Cliente industrial em alta tensão.',
+                  pcMin:50, pcMax:99999, pcDefault:1000 }
 };
 
 const ORDEM_CATEGORIAS = ['bt-social1','bt-social2','bt-mono','bt-trif','bt-ind','bt-cs','mt-ind','at-ind'];

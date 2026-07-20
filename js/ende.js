@@ -813,7 +813,7 @@ function totals(){
      Social 1 → Smax ≤ 1,2 kVA  E  Consumo Mensal ≤ 120 kWh
      Social 2 → 1,2 ≤ Smax ≤ 3,0 kVA  E  Consumo Mensal ≤ 20 kWh
    ============================================================ */
-const CATEGORIAS_VALIDADAS_POR_SMAX = ['bt-social1', 'bt-social2'];
+const CATEGORIAS_VALIDADAS_POR_SMAX = ['bt-social1', 'bt-social2']; // Social 1/2: validação por Smax + Consumo
 const REGRAS_SOCIAL = {
   'bt-social1': {
     smaxMin: 0,   smaxMax: 1.2,  consumoMax: 120,
@@ -872,7 +872,7 @@ function avaliarCondicaoSocial(categoria){
      Monofásico          → 3,1  ≤ Smax ≤ 9,9  kVA
      Trifásico Especial  → 13,2 ≤ Smax ≤ 49,9 kVA
    ============================================================ */
-const CATEGORIAS_COM_CARD_PI = ['bt-mono', 'bt-trif'];
+const CATEGORIAS_COM_CARD_PI = ['bt-mono', 'bt-trif', 'bt-ind', 'bt-cs'];
 const REGRAS_SMAX_PI = {
   'bt-mono': {
     smaxMin: 3.1, smaxMax: 9.9,
@@ -883,6 +883,16 @@ const REGRAS_SMAX_PI = {
     smaxMin: 13.2, smaxMax: 49.9,
     sugestaoSmaxBaixo: 'BT Doméstico Monofásico',
     sugestaoSmaxAlto:  null // acima de 49,9 kVA já é caso de plano Industrial/Comercial — o sistema não distingue sozinho
+  },
+  'bt-ind': {
+    smaxMin: 3.1, smaxMax: 49.9,
+    sugestaoSmaxBaixo: 'BT Doméstico Social 2',
+    sugestaoSmaxAlto:  'MT Indústria'
+  },
+  'bt-cs': {
+    smaxMin: 3.1, smaxMax: 49.9,
+    sugestaoSmaxBaixo: 'BT Doméstico Social 2',
+    sugestaoSmaxAlto:  'MT Indústria'
   }
 };
 
@@ -916,6 +926,21 @@ function determinarCategoriaFinal(){
   const kwhDia = state.devices.reduce((s,d)=> s + dailyKwh(d), 0);
   const consumoMensal = kwhDia * 30;
 
+  // Categorias empresariais/industriais: respeitar a escolha do utilizador
+  // (não há cascata automática — o utilizador escolheu 5, 6, 7 ou 8)
+  const CATEGORIAS_EMPRESARIAIS = ['bt-ind', 'bt-cs', 'mt-ind', 'at-ind'];
+  if(CATEGORIAS_EMPRESARIAIS.includes(state.categoria)){
+    return {
+      smax, consumoMensal,
+      categoriaFinal: state.categoria,
+      s1: { dentro: false, falhaSmax: false, falhaConsumo: false, falhaAmbos: false, sugestao: null },
+      s2: { dentro: false, falhaSmax: false, falhaConsumo: false, falhaAmbos: false, sugestao: null },
+      mono: { dentro: false, falhaSmax: false, sugestao: null },
+      trif: { dentro: false, falhaSmax: false, sugestao: null }
+    };
+  }
+
+  // Categorias residenciais: cascata automática S1 → S2 → Mono → Trif
   const result = {
     smax, consumoMensal,
     categoriaFinal: 'bt-mono',
@@ -1002,7 +1027,8 @@ function renderSmaxCard(){
   }
   const smax = calcularSmax();
   const nomeAtual = state.categoria === 'bt-social1' ? 'Social 1' : 'Social 2';
-  const r = CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria) ? avaliarCondicaoSocial(state.categoria) : null;
+  const catFinal = determinarCategoriaFinal().categoriaFinal;
+  const r = CATEGORIAS_VALIDADAS_POR_SMAX.includes(catFinal) ? avaliarCondicaoSocial(catFinal) : null;
   const foraDoLimite = !!(r && !r.dentro);
 
   card.style.background = foraDoLimite ? 'var(--red-pale)' : 'var(--red-pale-2)';
@@ -1037,13 +1063,28 @@ function renderInventory(){
         <div class="d-sub" data-tooltip="Cálculo: Quantidade × Potência unitária = Potência total instalada (em Watts).">${d.quantidade} × ${fmt(d.potencia,0)} W = <strong class="mono">${fmt(d.potencia*d.quantidade,0)} W</strong></div>
       </div>
       <div class="d-fields">
-        <div class="field-mini" data-tooltip="Potência elétrica unitária do equipamento, em Watts (W). Edite se souber o valor exacto."><label>Watts</label><input type="number" min="1" value="${d.potencia}" data-id="${d.id}" data-field="potencia" aria-label="Potência em Watts de ${escapeHtml(d.nome)}"></div>
-        <div class="field-mini wide" data-tooltip="Número de unidades idênticas deste equipamento (ex: 4 lâmpadas iguais)."><label>Qtd.</label><input type="number" min="1" value="${d.quantidade}" data-id="${d.id}" data-field="quantidade" aria-label="Quantidade de ${escapeHtml(d.nome)}"></div>
+        <div class="field-mini" data-tooltip="Potência elétrica unitária do equipamento, em Watts (W). Edite se souber o valor exacto."><label>Watts</label><input type="number" inputmode="numeric" min="1" step="any" value="${d.potencia}" data-id="${d.id}" data-field="potencia" aria-label="Potência em Watts de ${escapeHtml(d.nome)}"></div>
+        <div class="field-mini wide" data-tooltip="Número de unidades idênticas deste equipamento (ex: 4 lâmpadas iguais)."><label>Qtd.</label><input type="number" inputmode="numeric" min="1" step="1" value="${d.quantidade}" data-id="${d.id}" data-field="quantidade" aria-label="Quantidade de ${escapeHtml(d.nome)}"></div>
       </div>
       <button class="btn-remove" data-remove="${d.id}" aria-label="Remover ${escapeHtml(d.nome)}" data-tooltip="Remover este equipamento da lista."><i class="fa-solid fa-trash"></i></button>`;
     listInv.appendChild(row);
   });
-  listInv.querySelectorAll('input').forEach(inp=> inp.addEventListener('input', onFieldChange));
+  listInv.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', onFieldChange);
+    // Setas ↑/↓ para ajustar valor sem perder foco
+    inp.addEventListener('keydown', (e)=>{
+      if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){
+        e.preventDefault();
+        const step = parseFloat(inp.step) || 1;
+        const current = parseFloat(inp.value) || 0;
+        const min = parseFloat(inp.min) || 0;
+        const newVal = e.key === 'ArrowUp' ? current + step : Math.max(min, current - step);
+        inp.value = newVal;
+        // Dispara o evento input manualmente para actualizar o state
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  });
   listInv.querySelectorAll('[data-remove]').forEach(btn=> btn.addEventListener('click', ()=> removeDevice(btn.getAttribute('data-remove'))));
 }
 function onFieldChange(e){
@@ -1090,7 +1131,7 @@ function renderHours(){
           }).join('')}
         </div>
       </div>
-      <div class="d-fields"><div class="field-mini" data-tooltip="Horas por dia em que o equipamento fica ligado (0 a 24, em passos de 0,5)."><label>Horas/dia</label><input type="number" min="0" max="24" step="0.5" value="${d.horas}" data-id="${d.id}" data-field="horas" aria-label="Horas por dia de ${escapeHtml(d.nome)}"></div></div>
+      <div class="d-fields"><div class="field-mini" data-tooltip="Horas por dia em que o equipamento fica ligado (0 a 24, em passos de 0,5)."><label>Horas/dia</label><input type="number" inputmode="numeric" min="0" max="24" step="0.5" value="${d.horas}" data-id="${d.id}" data-field="horas" aria-label="Horas por dia de ${escapeHtml(d.nome)}"></div></div>
       <div class="kwh-readout mono" data-tooltip="Consumo diário estimado = Potência total (W) × Horas/dia ÷ 1000 (em kWh).">${fmt(dailyKwh(d))} kWh/d</div>`;
     listHours.appendChild(row);
   });
@@ -1099,6 +1140,20 @@ function renderHours(){
       const val = Math.max(0, Math.min(24, parseFloat(e.target.value) || 0));
       const dev = state.devices.find(d=> d.id === e.target.getAttribute('data-id'));
       if(dev){ dev.horas = val; save(); renderAll(); }
+    });
+    // Setas ↑/↓ para ajustar horas sem perder foco
+    inp.addEventListener('keydown', (e)=>{
+      if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){
+        e.preventDefault();
+        const step = parseFloat(inp.step) || 0.5;
+        const current = parseFloat(inp.value) || 0;
+        const newVal = e.key === 'ArrowUp' 
+          ? Math.min(24, current + step) 
+          : Math.max(0, current - step);
+        inp.value = newVal;
+        const dev = state.devices.find(d=> d.id === inp.getAttribute('data-id'));
+        if(dev){ dev.horas = newVal; save(); renderAll(); }
+      }
     });
   });
   listHours.querySelectorAll('[data-hours]').forEach(btn=>{
@@ -1181,22 +1236,35 @@ function actualizarCategoriaBanner(){
       sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(smax,2)} kVA · Pc ${fmt(state.pc,1)} kVA${taxaTxt} · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh. ${textoFalha}`;
       banner.classList.remove('corrigido', 'gap-alert');
     }
-    else {
-      // Outras categorias (industriais) — lógica antiga por Pc
-      const v = validarCategoriaSelecionada(state.categoria, state.pc);
-      const tFinalPc = TARIFARIOS[v.categoriaFinal];
-      if(nome) nome.textContent = tFinalPc.label;
-      const pcTxt = fmt(state.pc, 1) + ' kVA';
-      if(v.mudou){
-        sub.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Categoria original era <strong>${escapeHtml(TARIFARIOS[state.categoria]?.label || '—')}</strong>. Pelo teu Pc de ${escapeHtml(pcTxt)}, foste reclassificado.`;
-      } else if(v.gap){
-        sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pc de ${escapeHtml(pcTxt)} está fora dos escalões oficiais — usámos a categoria mais próxima.`;
+    else if(catFinal === 'bt-ind' || catFinal === 'bt-cs'){
+      // BT Industrial ou BT Comércio — validado por Smax (3,1–49,9 kVA)
+      const r = avaliarFaixaSmax(catFinal);
+      const taxaTxt = tFinal.taxaFixa > 0 ? ` · Taxa fixa ${fmt(tFinal.taxaFixa,2)} Kz/kVA` : '';
+      if(r.dentro){
+        sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(smax,2)} kVA · Pc ${fmt(state.pc,1)} kVA${taxaTxt} · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh.`;
+        banner.classList.remove('corrigido', 'gap-alert');
       } else {
-        const taxaTxt = tFinalPc.taxaFixa > 0 ? ` · Taxa fixa ${fmt(tFinalPc.taxaFixa,2)} Kz/kVA` : '';
-        sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Pc de ${escapeHtml(pcTxt)}${taxaTxt} · Tarifa ${fmt(tFinalPc.tarifaKwh,2)} Kz/kWh.`;
+        let textoFalha = '';
+        if(r.motivo === 'smax-baixo'){
+          textoFalha = `Pela tua Potência Estimada de ${fmt(smax,2)} kVA, você não se enquadra no ${tFinal.label}. Sugestão: ${r.sugestao}. `;
+        } else if(r.motivo === 'smax-alto'){
+          textoFalha = `Pela tua Potência Estimada de ${fmt(smax,2)} kVA, você não se enquadra no ${tFinal.label}. Sugestão: ${r.sugestao}. `;
+        }
+        sub.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${textoFalha}Categoria aplicada: <strong>${tFinal.label}</strong>.`;
+        banner.classList.add('corrigido');
+        banner.classList.remove('gap-alert');
       }
-      banner.classList.toggle('corrigido', v.mudou);
-      banner.classList.toggle('gap-alert', !v.mudou && v.gap);
+    }
+    else if(catFinal === 'mt-ind' || catFinal === 'at-ind'){
+      // MT/AT Indústria — Pc livre (≥50 kVA), sem validação de Smax
+      const taxaTxt = tFinal.taxaFixa > 0 ? ` · Taxa fixa ${fmt(tFinal.taxaFixa,2)} Kz/kVA` : '';
+      sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${tFinal.label} · Pc ${fmt(state.pc,1)} kVA${taxaTxt} · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh.`;
+      banner.classList.remove('corrigido', 'gap-alert');
+    }
+    else {
+      // Fallback — categorias não reconhecidas
+      sub.innerHTML = `<i class="fa-solid fa-circle-question"></i> Categoria aplicada: <strong>${tFinal.label}</strong>.`;
+      banner.classList.remove('corrigido', 'gap-alert');
     }
   }
 }
@@ -1247,7 +1315,7 @@ function renderCardPi(){
       <div class="stat-sub">soma de todos equipamentos</div>`;
     pcCard.insertAdjacentElement('afterend', card);
   }
-  const mostrar = CATEGORIAS_COM_CARD_PI.includes(state.categoria);
+  const mostrar = CATEGORIAS_COM_CARD_PI.includes(determinarCategoriaFinal().categoriaFinal);
   card.classList.toggle('hidden', !mostrar);
   if(mostrar) $('v-pi').textContent = fmt(calcularPotenciaInstalada(), 2);
 }
@@ -1343,7 +1411,7 @@ function gerarQRInstagram(){
   if(!alvo || typeof QRCode === 'undefined') return;
   alvo.innerHTML = '';
   new QRCode(alvo, {
-    text:'https://www.instagram.com/ende_oficial/',
+    text:'https://www.facebook.com/ende.oficial/',
     width:118, height:118,
     colorDark:'#0B2547', colorLight:'#FFFFFF',
     correctLevel: QRCode.CorrectLevel.M
@@ -1572,7 +1640,8 @@ function selecionarTipoCliente(cat){
         state.tarifaOverride = null;
         if(categoriaSelect) categoriaSelect.value = state.categoria;
         if(pcInput) pcInput.value = state.pc;
-        if(tarifaInput) tarifaInput.value = TARIFARIOS[state.categoria].tarifaKwh || '';
+        const catFinalSync = determinarCategoriaFinal().categoriaFinal;
+  if(tarifaInput) tarifaInput.value = TARIFARIOS[catFinalSync].tarifaKwh || '';
         save();
         atualizarResumoTarifario();
         renderTipoCliente();
@@ -1644,7 +1713,7 @@ function renderCatalog(){
       // Tarefa 2: tooltip no item do catálogo — ajuda o visitante a perceber o que vai adicionar
       const consumo6h = ((it.potencia * 6) / 1000); // estimativa a 6h/dia (horaSugeridas pode variar)
       const tooltip = `${it.nome} · ${CATEGORIAS[it.categoria].label} — ${it.potencia} W. Sugestão de uso: ${it.horasSugeridas}h/dia (~${fmt(consumo6h,2)} kWh a 6h/dia). Toque para adicionar ao inventário.`;
-      html += `<button type="button" class="catalog-item" data-add-catalog="${escapeHtml(it.nome)}" data-tooltip="${escapeHtml(tooltip)}">
+      html += `<button type="button" class="catalog-item" data-add-catalog="${it.nome}" data-tooltip="${escapeHtml(tooltip)}">
         <div class="d-icon"><i class="fa-solid ${CATEGORIAS[it.categoria].icon}"></i></div>
         <div><div class="ci-name">${escapeHtml(it.nome)}</div><div class="ci-watt">${it.potencia} W</div></div>
         <i class="fa-solid fa-circle-plus ci-add"></i></button>`;
@@ -1799,9 +1868,12 @@ function atualizarResumoTarifario(){
     if(selMono) selMono.classList.add('hidden');
     return;
   }
-  const t = tarifarioAtual();
+  // Usa a categoria FINAL (detectada por Smax+Consumo) em vez da escolhida pelo utilizador
+  const catFinal = determinarCategoriaFinal().categoriaFinal;
+  const t = TARIFARIOS[catFinal] || TARIFARIOS['bt-mono'];
+  const tarifa = (typeof state.tarifaOverride === 'number' && !isNaN(state.tarifaOverride)) ? state.tarifaOverride : t.tarifaKwh;
   if(taxaFixaAplicadaEl) taxaFixaAplicadaEl.textContent = fmt(t.taxaFixa, 2);
-  if(tariffHeader) tariffHeader.textContent = t.short + ' · ' + fmt(tarifaAtual()) + ' Kz/kWh';
+  if(tariffHeader) tariffHeader.textContent = t.short + ' · ' + fmt(tarifa) + ' Kz/kWh';
   if(avisoGrandes) avisoGrandes.style.display = t.semDados ? 'block' : 'none';
   if(pcInput) pcInput.disabled = !!t.semDados;
   if(tarifaInput) tarifaInput.disabled = !!t.semDados;
@@ -1809,22 +1881,30 @@ function atualizarResumoTarifario(){
   // Social 1 e Social 2: o Pc é fixo internamente (1,2/3,0 kVA), usado só para
   // calcular a fatura — não é o utilizador quem o define, então o campo some.
   // A categoria correcta é validada pelo Smax (ver calcularSmax() / card no Inventário).
-  const escondePc = CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria);
+  const escondePc = CATEGORIAS_VALIDADAS_POR_SMAX.includes(catFinal);
   if(pcRow) pcRow.classList.toggle('hidden', escondePc);
   if(pcInput) pcInput.disabled = pcInput.disabled || escondePc;
 
-  // BT Doméstico Monofásico: troca o input livre pelo select de disjuntor.
-  // Trifásico Especial: mantém o input livre (Pc contínuo), só ajusta o mínimo oficial.
-  const ehMono = state.categoria === 'bt-mono';
-  if(pcWrap) pcWrap.classList.toggle('hidden', ehMono);
+  // Determinar se a categoria usa Pc de Mono (select fixo) ou Trif (input livre)
+  // com base no Smax: < 13,2 kVA → Mono (select), ≥ 13,2 kVA → Trif (input livre)
+  const smax = calcularSmax();
+  const usaPcMono = catFinal === 'bt-mono' ||
+    ((catFinal === 'bt-ind' || catFinal === 'bt-cs') && smax < 13.2);
+  const usaPcTrif = catFinal === 'bt-trif' ||
+    ((catFinal === 'bt-ind' || catFinal === 'bt-cs') && smax >= 13.2);
+
+  // BT Doméstico Monofásico / BT Industrial Mono / BT Comércio Mono:
+  // troca o input livre pelo select de disjuntor.
+  if(pcWrap) pcWrap.classList.toggle('hidden', usaPcMono);
   if(selMono){
-    selMono.classList.toggle('hidden', !ehMono);
-    if(ehMono){
+    selMono.classList.toggle('hidden', !usaPcMono);
+    if(usaPcMono){
       const valido = OPCOES_PC_MONO.includes(state.pc) ? state.pc : OPCOES_PC_MONO[2]; // default 6,6
       selMono.value = valido;
     }
   }
-  if(pcInput) pcInput.min = (state.categoria === 'bt-trif') ? 13.2 : 0;
+  // Trifásico / BT Industrial Trif / BT Comércio Trif: input livre com mínimo 13,2
+  if(pcInput) pcInput.min = usaPcTrif ? 13.2 : 0;
 }
 
 categoriaSelect.addEventListener('change', ()=>{
@@ -1866,7 +1946,8 @@ pcInput.addEventListener('input', ()=>{
         state.categoria = v.categoriaFinal;
         state.tarifaOverride = null;
         if(categoriaSelect) categoriaSelect.value = state.categoria;
-        if(tarifaInput) tarifaInput.value = TARIFARIOS[state.categoria].tarifaKwh || '';
+        const catFinalSync = determinarCategoriaFinal().categoriaFinal;
+  if(tarifaInput) tarifaInput.value = TARIFARIOS[catFinalSync].tarifaKwh || '';
         save();
         atualizarResumoTarifario();
         actualizarCategoriaBanner();
@@ -2017,7 +2098,8 @@ async function exportarRelatorioPDF(){
 
     const v = validarCategoriaSelecionada(state.categoria, state.pc);
     const tFinal = TARIFARIOS[v.categoriaFinal];
-    const tInfo = TARIFARIOS[state.categoria] || {label:'—'};
+    const catFinalVoz = determinarCategoriaFinal().categoriaFinal;
+  const tInfo = TARIFARIOS[catFinalVoz] || {label:'—'};
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
