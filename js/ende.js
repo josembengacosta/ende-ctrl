@@ -1411,7 +1411,7 @@ function gerarQRInstagram(){
   if(!alvo || typeof QRCode === 'undefined') return;
   alvo.innerHTML = '';
   new QRCode(alvo, {
-    text:'https://www.instagram.com/ende_oficial/',
+    text:'https://www.facebook.com/ende.oficial/',
     width:118, height:118,
     colorDark:'#0B2547', colorLight:'#FFFFFF',
     correctLevel: QRCode.CorrectLevel.M
@@ -2424,22 +2424,6 @@ renderAll();
 // o utilizador vê o tipo de cliente seleccionado e pode avançar ou trocar.
 switchTab(0);
 escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 26);
-
-/* ---------- Logo da ENDE na Tela 1 (Boas-vindas) ---------- */
-(function inserirLogoBoasVindas(){
-  const tela = document.querySelector('.tela-boas-vindas');
-  if(!tela || document.getElementById('logo-ende-boas-vindas')) return;
-  const wrap = document.createElement('div');
-  wrap.id = 'logo-ende-boas-vindas';
-  wrap.style.cssText = 'position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:10;text-align:center;';
-  wrap.innerHTML = `
-    <img src="img/ende-white.png" alt="ENDE" style="height:52px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.25));" onerror="this.style.display='none'">
-    <div style="margin-top:6px;font-family:Sora,sans-serif;font-size:0.72rem;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.3);letter-spacing:0.04em;white-space:nowrap;">
-      EMPRESA NACIONAL DE DISTRIBUIÇÃO<br>DE ELECTRICIDADE-EP
-    </div>
-  `;
-  tela.insertBefore(wrap, tela.firstChild);
-})();
 
 /* ============================================================
    DESBLOQUEIO DA VOZ (autoplay policy do Chrome)
