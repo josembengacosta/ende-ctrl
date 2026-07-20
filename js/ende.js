@@ -769,8 +769,22 @@ function totals(){
   const kwhDia = state.devices.reduce((s,d)=> s + dailyKwh(d), 0);
   const kwhMes = kwhDia * 30;
   const tarifa = tarifaAtual();
-  const kzDia = calcularCustoENDE(state.categoria, state.pc, kwhDia, tarifa);
-  const kzMes = calcularCustoENDE(state.categoria, state.pc, kwhMes, tarifa);
+
+  let kzDia, kzMes;
+  if(CATEGORIAS_COM_CARD_PI.includes(state.categoria)){
+    // Monofásico / Trifásico Especial: a fórmula oficial usa Pi = Potência
+    // Instalada (kVA, fixo — soma dos equipamentos sem multiplicar por horas),
+    // NÃO o consumo em kWh. É uma fórmula mensal por natureza (Pi não muda
+    // dia a dia); o "Custo Diário" mostrado é kzMes/30 só para manter a UI
+    // consistente com as outras categorias — confirmar com o técnico da ENDE
+    // se esta divisão faz sentido para o totem.
+    const pi = calcularPotenciaInstalada();
+    kzMes = calcularCustoENDE(state.categoria, state.pc, pi, tarifa);
+    kzDia = Math.round((kzMes / 30) * 100) / 100;
+  } else {
+    kzDia = calcularCustoENDE(state.categoria, state.pc, kwhDia, tarifa);
+    kzMes = calcularCustoENDE(state.categoria, state.pc, kwhMes, tarifa);
+  }
   return { kwhDia, kwhMes, kzDia, kzMes };
 }
 
@@ -796,7 +810,7 @@ const REGRAS_SOCIAL = {
     sugestaoConsumo:  'Social 2'
   },
   'bt-social2': {
-    smaxMin: 1.2, smaxMax: 3.0,  consumoMax: 20,
+    smaxMin: 1.2, smaxMax: 3.0,  consumoMax: 200,
     sugestaoSmaxBaixo: 'Social 1',
     sugestaoSmaxAlto:  'BT Doméstico Monofásico',
     sugestaoConsumo:   'BT Doméstico Monofásico'
@@ -836,6 +850,44 @@ function avaliarCondicaoSocial(categoria){
     return { dentro:false, motivo:'consumo', sugestao: regra.sugestaoConsumo || null, smax, consumoMensal };
   }
   return { dentro:true, motivo:null, sugestao:null, smax, consumoMensal };
+}
+
+/* ============================================================
+   BT Doméstico Monofásico e Trifásico Especial: aqui a "Condicional"
+   oficial é só a faixa de Smax (não tem 2ª condição de consumo, como
+   no Social 1/2). O Pc continua a ser escolhido pelo cliente (é o
+   disjuntor) — não é escondido, só validado contra o Smax real.
+   Tabela oficial:
+     Monofásico          → 3,1  ≤ Smax ≤ 9,9  kVA
+     Trifásico Especial  → 13,2 ≤ Smax ≤ 49,9 kVA
+   ============================================================ */
+const CATEGORIAS_COM_CARD_PI = ['bt-mono', 'bt-trif'];
+const REGRAS_SMAX_PI = {
+  'bt-mono': {
+    smaxMin: 3.1, smaxMax: 9.9,
+    sugestaoSmaxBaixo: 'Social 2',
+    sugestaoSmaxAlto:  'Trifásico Especial'
+  },
+  'bt-trif': {
+    smaxMin: 13.2, smaxMax: 49.9,
+    sugestaoSmaxBaixo: 'BT Doméstico Monofásico',
+    sugestaoSmaxAlto:  null // acima de 49,9 kVA já é caso de plano Industrial/Comercial — o sistema não distingue sozinho
+  }
+};
+
+/**
+ * Avalia se a categoria (Monofásico ou Trifásico Especial) actual bate
+ * com a faixa oficial de Smax. Não olha para o Pc nem para o consumo —
+ * essas continuam a compor a fatura normalmente via calcularCustoENDE.
+ * @returns {{dentro:boolean, motivo:('smax-baixo'|'smax-alto'|null), sugestao:string|null, smax:number}}
+ */
+function avaliarFaixaSmax(categoria){
+  const regra = REGRAS_SMAX_PI[categoria];
+  const smax = calcularSmax();
+  if(!regra) return { dentro:true, motivo:null, sugestao:null, smax };
+  if(smax < regra.smaxMin) return { dentro:false, motivo:'smax-baixo', sugestao: regra.sugestaoSmaxBaixo || null, smax };
+  if(smax > regra.smaxMax) return { dentro:false, motivo:'smax-alto',  sugestao: regra.sugestaoSmaxAlto  || null, smax };
+  return { dentro:true, motivo:null, sugestao:null, smax };
 }
 
 function escapeHtml(str){
@@ -1001,6 +1053,22 @@ function actualizarCategoriaBanner(){
     return;
   }
 
+  // === Caso especial: Monofásico e Trifásico Especial validados pela faixa de Smax
+  // (o Pc continua a ser escolhido pelo cliente — disjuntor — e entra na fórmula normalmente) ===
+  if(CATEGORIAS_COM_CARD_PI.includes(state.categoria)){
+    const r = avaliarFaixaSmax(state.categoria);
+    const tAtual = TARIFARIOS[state.categoria];
+    if(nome) nome.textContent = tAtual.label;
+    if(sub){
+      sub.innerHTML = r.dentro
+        ? `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(r.smax,2)} kVA · Pc ${fmt(state.pc,1)} kVA · Taxa fixa ${fmt(tAtual.taxaFixa,2)} Kz/kVA · Tarifa ${fmt(tAtual.tarifaKwh,2)} Kz/kWh.`
+        : `<i class="fa-solid fa-triangle-exclamation"></i> Pela tua Potência Estimada de ${fmt(r.smax,2)} kVA, você não se enquadra no ${tAtual.label}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
+    }
+    banner.classList.toggle('corrigido', !r.dentro);
+    banner.classList.toggle('gap-alert', false);
+    return;
+  }
+
   // validar categoria actual contra o Pc actual
   const v = validarCategoriaSelecionada(state.categoria, state.pc);
   const tFinal = TARIFARIOS[v.categoriaFinal];
@@ -1045,6 +1113,30 @@ function renderCardPotencia(){
   pcEl.textContent = usaSmax ? fmt(calcularSmax(), 2) : fmt(state.pc, 1);
 }
 
+/* Cartão "Potência Instalada (Pi)" no painel de Resultados — só aparece
+   para Monofásico e Trifásico Especial, onde a fatura usa Pc E Pi juntos.
+   Criado dinamicamente logo depois do cartão de Potência Contratada;
+   não mexe no HTML. */
+function renderCardPi(){
+  const pcCard = document.querySelector('.stat-pc');
+  if(!pcCard) return;
+  let card = document.getElementById('pi-card');
+  if(!card){
+    card = document.createElement('div');
+    card.id = 'pi-card';
+    card.className = 'stat-card hidden';
+    card.setAttribute('data-tooltip', 'Potência Instalada (Pi) = soma de todos os equipamentos ÷ 1000 — usada junto com o Pc na fórmula da fatura (117 × Pc + Tarifa × Pi).');
+    card.innerHTML = `
+      <div class="stat-label"><i class="fa-solid fa-plug-circle-bolt"></i>Potência Instalada (Pi)</div>
+      <div class="stat-value"><span id="v-pi">0,00</span><span class="stat-unit">kVA</span></div>
+      <div class="stat-sub">soma de todos equipamentos</div>`;
+    pcCard.insertAdjacentElement('afterend', card);
+  }
+  const mostrar = CATEGORIAS_COM_CARD_PI.includes(state.categoria);
+  card.classList.toggle('hidden', !mostrar);
+  if(mostrar) $('v-pi').textContent = fmt(calcularPotenciaInstalada(), 2);
+}
+
 function renderResults(){
   const hasDevices = state.devices.length > 0;
   const hasCategoria = clienteSelecionado();
@@ -1060,6 +1152,7 @@ function renderResults(){
   if(!podeMostrar){
     // actualiza ainda assim o cartão de Potência (mostra "—" se não houver categoria)
     renderCardPotencia();
+    renderCardPi();
     const taxaFixaCardEl = $('v-taxa-fixa');
     if(taxaFixaCardEl) taxaFixaCardEl.textContent = hasCategoria ? fmt(tarifarioAtual().taxaFixa, 2) : '—';
     return;
@@ -1068,6 +1161,7 @@ function renderResults(){
   const t = totals();
   // Tarefa 3: cartão de leitura da Potência Contratada (ou Potência Estimada, ver renderCardPotencia)
   renderCardPotencia();
+  renderCardPi();
   const taxaFixaCardEl = $('v-taxa-fixa');
   if(taxaFixaCardEl) taxaFixaCardEl.textContent = fmt(tarifarioAtual().taxaFixa, 2);
 
@@ -1546,8 +1640,37 @@ $('btn-add-custom').addEventListener('click', ()=>{
    O <select id="categoria-select"> no painel de Resultados continua a funcionar
    como atalho para trocar de categoria sem voltar atrás, e usa o mesmo path
    de sincronização. */
+/* BT Doméstico Monofásico: o Pc só pode ser um dos 4 valores do disjuntor
+   (3,3 / 4,4 / 6,6 / 9,9 kVA) — troca o input numérico livre por um select
+   com essas opções fixas. Criado dinamicamente; não mexe no HTML. Reaproveita
+   o mesmo pipeline do pcInput (dispara 'input' nele) em vez de duplicar a
+   lógica de validação/alerta. */
+const OPCOES_PC_MONO = [3.3, 4.4, 6.6, 9.9];
+function garantirSelectPcMono(){
+  let sel = document.getElementById('pc-select-mono');
+  if(sel) return sel;
+  sel = document.createElement('select');
+  sel.id = 'pc-select-mono';
+  sel.className = 'hidden';
+  OPCOES_PC_MONO.forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = fmt(v,1) + ' kVA';
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', ()=>{
+    pcInput.value = sel.value;
+    pcInput.dispatchEvent(new Event('input', { bubbles:true }));
+  });
+  const wrap = pcInput.closest('.tariff-input-wrap') || pcInput.parentNode;
+  wrap.parentNode.insertBefore(sel, wrap);
+  return sel;
+}
+
 function atualizarResumoTarifario(){
-  const pcRow = pcInput ? pcInput.closest('.tariff-row') : null;
+  const pcRow  = pcInput ? pcInput.closest('.tariff-row') : null;
+  const pcWrap = pcInput ? pcInput.closest('.tariff-input-wrap') : null;
+  const selMono = garantirSelectPcMono();
   if(!state.categoria){
     // ainda sem categoria: mostra estado vazio no header
     if(tariffHeader) tariffHeader.textContent = 'Tipo de cliente por seleccionar';
@@ -1556,6 +1679,8 @@ function atualizarResumoTarifario(){
     if(pcInput) pcInput.disabled = true;
     if(tarifaInput) tarifaInput.disabled = true;
     if(pcRow) pcRow.classList.remove('hidden');
+    if(pcWrap) pcWrap.classList.remove('hidden');
+    if(selMono) selMono.classList.add('hidden');
     return;
   }
   const t = tarifarioAtual();
@@ -1571,6 +1696,19 @@ function atualizarResumoTarifario(){
   const escondePc = CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria);
   if(pcRow) pcRow.classList.toggle('hidden', escondePc);
   if(pcInput) pcInput.disabled = pcInput.disabled || escondePc;
+
+  // BT Doméstico Monofásico: troca o input livre pelo select de disjuntor.
+  // Trifásico Especial: mantém o input livre (Pc contínuo), só ajusta o mínimo oficial.
+  const ehMono = state.categoria === 'bt-mono';
+  if(pcWrap) pcWrap.classList.toggle('hidden', ehMono);
+  if(selMono){
+    selMono.classList.toggle('hidden', !ehMono);
+    if(ehMono){
+      const valido = OPCOES_PC_MONO.includes(state.pc) ? state.pc : OPCOES_PC_MONO[2]; // default 6,6
+      selMono.value = valido;
+    }
+  }
+  if(pcInput) pcInput.min = (state.categoria === 'bt-trif') ? 13.2 : 0;
 }
 
 categoriaSelect.addEventListener('change', ()=>{
