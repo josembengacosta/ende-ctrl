@@ -2515,3 +2515,229 @@ select[data-tooltip] {
     justify-content: center;
   }
 }
+
+/* ============================================================
+   TAB 0 — NÍVEL 1: 2 CARDS GRANDES (Residencial / Empresarial)
+   ============================================================ */
+.tipo-cliente-raiz {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin: 10px 0 18px 0;
+}
+@media (min-width: 760px) {
+  .tipo-cliente-raiz {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card-grande {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 22px 22px;
+  background: var(--white);
+  border: 2.5px solid var(--line-soft);
+  border-radius: var(--r-xl);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.22s var(--ease);
+  overflow: hidden;
+}
+.card-grande::before {
+  /* reflexo decorativo */
+  content: "";
+  position: absolute;
+  top: -60%;
+  right: -20%;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(255, 122, 26, 0.10), transparent 70%);
+  pointer-events: none;
+  transition: 0.4s var(--ease);
+}
+.card-grande:hover {
+  border-color: var(--orange);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px rgba(7, 26, 52, 0.18);
+}
+.card-grande:hover::before {
+  transform: scale(1.4);
+}
+.card-grande:active {
+  transform: translateY(-1px);
+}
+
+.card-grande-icon {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  color: var(--white);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+.card-residencial .card-grande-icon {
+  background: linear-gradient(135deg, var(--red), var(--red-dark));
+}
+.card-empresarial .card-grande-icon {
+  background: linear-gradient(135deg, var(--orange-deep), var(--orange));
+}
+
+.card-grande-body {
+  flex: 1;
+  min-width: 0;
+}
+.card-grande-titulo {
+  font-family: "Sora", "Inter", sans-serif;
+  font-size: clamp(1.1rem, 2.4vw, 1.4rem);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 5px;
+}
+.card-grande-sub {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--slate);
+  margin-bottom: 3px;
+}
+.card-grande-cats {
+  font-size: 0.72rem;
+  color: var(--slate-light);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.card-grande-cta {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--mist-2);
+  color: var(--slate);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  transition: 0.22s var(--ease);
+}
+.card-grande:hover .card-grande-cta {
+  background: var(--orange);
+  color: var(--white);
+  transform: translateX(4px);
+}
+
+/* Quando o grupo residencial/empresarial está seleccionado (categoria já escolhida) */
+.card-grande.seleccionado {
+  border-color: var(--red);
+  background: linear-gradient(150deg, #fff5f5, var(--mist));
+}
+.card-grande.seleccionado .card-grande-cta {
+  background: var(--red);
+  color: var(--white);
+}
+
+/* ============================================================
+   TAB 0 — NÍVEL 2: SUB-CATEGORIAS (cartões individuais)
+   ============================================================ */
+.tipo-cliente-sub {
+  animation: fadeInSub 0.3s var(--ease);
+}
+@keyframes fadeInSub {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.btn-voltar-grupos {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--white);
+  border: 1.5px solid var(--line-soft);
+  color: var(--slate);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.15s var(--ease);
+  margin-bottom: 12px;
+}
+.btn-voltar-grupos:hover {
+  background: var(--mist);
+  border-color: var(--slate-light);
+  color: var(--ink);
+}
+
+.sub-grupos-titulo {
+  font-family: "Sora", "Inter", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--red);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--red-pale);
+}
+.sub-grupos-titulo i {
+  font-size: 0.9rem;
+  color: var(--orange-deep);
+}
+
+/* ============================================================
+   BOTÕES FINAIS — Exportar PDF + Finalizar Simulação
+   ============================================================ */
+.botoes-finais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.botoes-finais .btn {
+  flex: 1;
+  min-width: 180px;
+}
+.btn-exportar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--white);
+  border: 2px solid var(--red);
+  color: var(--red);
+  font-family: "Sora", "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 14px 22px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.18s var(--ease);
+}
+.btn-exportar:hover {
+  background: var(--red);
+  color: var(--white);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(200, 16, 46, 0.25);
+}
+.btn-exportar:active {
+  transform: translateY(0);
+}
+.btn-exportar i {
+  font-size: 1.05rem;
+}
+
+/* Em ecrãs pequenos: botões em coluna */
+@media (max-width: 540px) {
+  .botoes-finais .btn {
+    flex: 1 1 100%;
+  }
+}

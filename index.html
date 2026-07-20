@@ -113,8 +113,40 @@
       <!-- PANEL 0 — TIPO DE CLIENTE (gate inicial) -->
       <section class="panel active" id="panel-0">
         <div class="section-title"><i class="fa-solid fa-user-tag"></i>Escolha o tipo de cliente</div>
-        <p class="section-hint">Selecione a categoria tarifária antes de adicionar equipamentos. Passe o cursor sobre cada cartão para ver detalhes.</p>
-        <div id="tipo-cliente-grid" class="tipo-cliente-grid"></div>
+        <p class="section-hint">Primeiro escolha se é cliente <strong>Residencial</strong> ou <strong>Empresarial/Industrial</strong>. Depois seleccione a categoria adequada.</p>
+
+        <!-- Nível 1: 2 cards grandes (Residencial vs Empresarial) -->
+        <div id="tipo-cliente-raiz" class="tipo-cliente-raiz">
+          <button type="button" class="card-grande card-residencial" id="card-residencial" data-grupo="residencial" data-tooltip="Cliente doméstico — habitação, casa de moradia, apartamento. Inclui as categorias Sociais, Monofásica e Trifásica.">
+            <div class="card-grande-icon"><i class="fa-solid fa-house-chimney-window"></i></div>
+            <div class="card-grande-body">
+              <div class="card-grande-titulo">Residencial</div>
+              <div class="card-grande-sub">Cliente doméstico · 4 categorias</div>
+              <div class="card-grande-cats">Sociais · Monofásica · Trifásica</div>
+            </div>
+            <div class="card-grande-cta"><i class="fa-solid fa-chevron-right"></i></div>
+          </button>
+
+          <button type="button" class="card-grande card-empresarial" id="card-empresarial" data-grupo="empresarial" data-tooltip="Cliente empresarial ou industrial — comércio, serviços, indústria em baixa, média e alta tensão.">
+            <div class="card-grande-icon"><i class="fa-solid fa-industry"></i></div>
+            <div class="card-grande-body">
+              <div class="card-grande-titulo">Empresarial / Industrial</div>
+              <div class="card-grande-sub">Comércio, serviços e indústria · 4 categorias</div>
+              <div class="card-grande-cats">BT · MT · AT Indústria e Comércio</div>
+            </div>
+            <div class="card-grande-cta"><i class="fa-solid fa-chevron-right"></i></div>
+          </button>
+        </div>
+
+        <!-- Nível 2: sub-categorias (escondido até escolher Residencial ou Empresarial) -->
+        <div id="tipo-cliente-sub" class="tipo-cliente-sub hidden">
+          <button type="button" class="btn-voltar-grupos" id="btn-voltar-grupos" data-tooltip="Voltar à escolha entre Residencial e Empresarial.">
+            <i class="fa-solid fa-arrow-left"></i> Voltar
+          </button>
+          <div class="sub-grupos-titulo" id="sub-grupos-titulo">—</div>
+          <div id="tipo-cliente-grid" class="tipo-cliente-grid"></div>
+        </div>
+
         <div class="tipo-cliente-footnote">
           <i class="fa-solid fa-circle-info"></i>
           <span>Os valores de Taxa Fixa e Tarifa aplicam-se automaticamente ao cálculo. A potência contratada (Pc) usa o valor por omissão de cada categoria, ajustável no painel de Resultados.</span>
@@ -292,10 +324,15 @@
             <textarea id="advice-text" placeholder="Escreva aqui uma recomendação personalizada..."></textarea>
           </div>
 
-          <!-- FINALIZAR -->
-          <button id="btn-finalizar" class="btn btn-brand btn-finalizar" data-tooltip="Termina a simulação e convida o visitante a tirar uma selfie com o robô da ENDE.">
-            <i class="fa-solid fa-flag-checkered"></i> Finalizar Simulação
-          </button>
+          <!-- EXPORTAR PDF + FINALIZAR -->
+          <div class="botoes-finais">
+            <button id="btn-exportar-pdf" class="btn btn-outline btn-exportar" data-tooltip="Gera um relatório em PDF com os equipamentos, consumos, custos e gráfico para o visitante levar.">
+              <i class="fa-solid fa-file-pdf"></i> Exportar Relatório (PDF)
+            </button>
+            <button id="btn-finalizar" class="btn btn-brand btn-finalizar" data-tooltip="Termina a simulação e convida o visitante a tirar uma selfie com o robô da ENDE.">
+              <i class="fa-solid fa-flag-checkered"></i> Finalizar Simulação
+            </button>
+          </div>
         </div>
       </section>
  <p
@@ -427,8 +464,19 @@
     loadScript('js/chart.umd.min.js', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
     // 4. QRCode.js (QR do Instagram)
     loadScript('js/qrcode.min.js', 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js');
-    // 5. Lógica principal — carrega DEPOIS das bibliotecas
-    loadScript('js/ende.js', null, null, function(){
+    // 4b. jsPDF — geração do relatório em PDF
+    loadScript('js/jspdf.umd.min.js', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    // 4c. html2canvas — captura o gráfico Chart.js como imagem para o PDF
+    loadScript('js/html2canvas.min.js', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    // 5. Dados do simulador (categorias, tarifários, catálogo) — sem CDN,
+    //    são dados próprios do projeto, não uma lib pública.
+    loadScript('js/ende-data.js?v=20260719', null, null, function(){
+      console.error('[ENDE] Falha ao carregar js/ende-data.js — o totem não vai funcionar.');
+    });
+    // 6. Lógica principal — carrega DEPOIS dos dados e das bibliotecas
+    // Usamos cache-busting (v=20260719) para garantir que o browser
+    // não serve uma versão antiga do ende.js durante o desenvolvimento.
+    loadScript('js/ende.js?v=20260719', null, null, function(){
       console.error('[ENDE] Falha ao carregar js/ende.js — o totem não vai funcionar.');
     });
     </script>

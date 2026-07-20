@@ -1,3 +1,11 @@
+/* ============================================================
+   ende.js — LÓGICA DO SIMULADOR ENDE (FILDA 2026)
+   ------------------------------------------------------------
+   Dados estáticos (categorias, tarifários, catálogo) foram
+   movidos para ende-data.js — carregue esse arquivo ANTES deste
+   no index.html.
+   ============================================================ */
+
 /* Fallback visual: se "robo-*.png" ainda não existir, mostra um ícone em vez de uma imagem partida.
    Basta substituir os ficheiros PNG na mesma pasta do HTML — nada no código precisa de mudar. */
 function handleRoboError(img, placeholderId){
@@ -120,7 +128,11 @@ function irParaBoasVindas(){
   // o texto do robô é "escrito" de novo sempre que o totem volta ao início,
   // para parecer que está a cumprimentar cada novo visitante
   escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 26);
-  tocarLoopBoasVindas();
+  // só arranca o loop de voz se já tiver sido desbloqueado por um clique prévio
+  // (autoplay policy do Chrome — ver desbloquearVoz())
+  if(vozDesbloqueada){
+    tocarLoopBoasVindas();
+  }
 }
 
 /* ---------- TRANSIÇÃO: TELA 1 → TELA 2 (Simulador) ---------- */
@@ -203,12 +215,13 @@ if('speechSynthesis' in window){
 }
 
 // A tua função falar mantém-se exatamente igual
-function falar(texto, aoTerminar){
+function falar(texto, aoTerminar, _retryCount){
   if(mudo || !('speechSynthesis' in window)){
     console.warn('[ENDE voz] falar() cancelado:', mudo ? 'mudo=true' : 'speechSynthesis indisponível');
     if(aoTerminar) aoTerminar();
     return;
   }
+  _retryCount = _retryCount || 0;
   const utter = new SpeechSynthesisUtterance(texto);
   utter.lang = 'pt-PT';
   if(vozPortuguesa) utter.voice = vozPortuguesa;
@@ -216,26 +229,41 @@ function falar(texto, aoTerminar){
   utter.pitch = 0.90; // Dica: podes baixar para X se quisermos tornar o tom ligeiramente mais grave
   utter.volume = Math.max(0, Math.min(1, volumeVoz)); // applica o volume global, com clamp de segurança
   // logs de depuração — ajuda a perceber porque é que a voz pode não estar a funcionar
-  console.info('[ENDE voz] falar():', {
-    texto: texto.substring(0, 80) + (texto.length > 80 ? '...' : ''),
-    volume: utter.volume,
-    voz: vozPortuguesa ? (vozPortuguesa.name + ' / ' + vozPortuguesa.lang) : 'nenhuma PT encontrada',
-    vozesDisponiveis: window.speechSynthesis.getVoices().length,
-    estadoAnterior: window.speechSynthesis.speaking ? 'a falar' : 'parado'
-  });
-  if(aoTerminar){ utter.onend = aoTerminar; utter.onerror = (e)=>{ console.error('[ENDE voz] erro:', e); if(aoTerminar) aoTerminar(); }; }
+  console.info('[ENDE voz] falar() tentativa=' + (_retryCount + 1) + ' vozDesbloqueada=' + vozDesbloqueada + ' voz=' + (vozPortuguesa ? vozPortuguesa.name : 'nenhuma PT encontrada'));
+  if(aoTerminar){
+    utter.onend = aoTerminar;
+  }
+  // handler de erro: se for "not-allowed" (autoplay bloqueado) e a voz já
+  // tiver sido desbloqueada por interação prévia, retentamos até 2 vezes.
+  // Se ainda NÃO foi desbloqueada, NÃO retentamos — o loop será arrancado
+  // pelo desbloquearVoz() quando o utilizador clicar.
+  utter.onerror = (e)=>{
+    console.error('[ENDE voz] erro:', e);
+    if(e && e.error === 'not-allowed' && vozDesbloqueada && _retryCount < 2){
+      console.warn('[ENDE voz] not-allowed — retentativa em 800ms (', _retryCount + 1, '/2 )');
+      setTimeout(()=> falar(texto, aoTerminar, _retryCount + 1), 800);
+    } else {
+      if(aoTerminar) aoTerminar();
+    }
+  };
   window.speechSynthesis.speak(utter);
   //某些 Chrome versions需要 este "resume" para não pausar a voz
   if(window.speechSynthesis.paused) window.speechSynthesis.resume();
 }
-
 
 const GAP_LOOP_BOAS_VINDAS_MS = 4000; // "alguns tempinho" de silêncio entre repetições do loop
 let loopBoasVindasTimeoutId = null;
 
 function tocarLoopBoasVindas(){
   clearTimeout(loopBoasVindasTimeoutId);
+  // SÓ arranca o loop se a voz já tiver sido desbloqueada por uma interação
+  // prévia do utilizador (autoplay policy do Chrome). Se ainda não foi
+  // desbloqueada, o desbloquearVoz() tratará de arrancar o loop no 1º clique.
   if(mudo || !('speechSynthesis' in window)) return;
+  if(!vozDesbloqueada){
+    console.info('[ENDE voz] Loop de boas-vindas adiado — à espera do 1º clique do utilizador (autoplay policy).');
+    return;
+  }
   window.speechSynthesis.cancel();
   falar(TEXTO_BOAS_VINDAS, ()=>{
     loopBoasVindasTimeoutId = setTimeout(()=>{
@@ -489,23 +517,10 @@ function reiniciarIdleTimer(){
 }
 ['click','touchstart','input'].forEach(evt=> document.addEventListener(evt, reiniciarIdleTimer, {passive:true}));
 
-
 /* ============================================================
    CATÁLOGO E ESTADO DO SIMULADOR (TELA 2)
    ============================================================ */
 const STORAGE_KEY = 'ende_totem_filda2026';
-
-const CATEGORIAS = {
-  iluminacao:   { label:'Iluminação',          icon:'fa-lightbulb'  },
-  refrigeracao: { label:'Refrigeração',        icon:'fa-snowflake'  },
-  climatizacao: { label:'Climatização',        icon:'fa-wind'       },
-  cozinha:      { label:'Cozinha',             icon:'fa-utensils'   },
-  lavandaria:   { label:'Lavandaria',          icon:'fa-shirt'      },
-  eletronica:   { label:'Eletrónica & Lazer',  icon:'fa-tv'         },
-  escritorio:   { label:'Escritório & Estudo', icon:'fa-laptop'     },
-  bombagem:     { label:'Bombagem & Outros',   icon:'fa-water'      },
-  personalizado:{ label:'Personalizado',       icon:'fa-plug'       }
-};
 
 /* ============================================================
    TARIFÁRIOS REAIS DA ENDE (Baixa/Média Tensão) — confirmados pelo
@@ -536,35 +551,8 @@ const CATEGORIAS = {
      - pcMin/pcMax: limites para validação de Pc livre (ex.: BT-Trif 13,2 a 49,9)
      - semDados: categoria bloqueada (sem valores oficiais publicados)
    ============================================================ */
-const TARIFARIOS = {
-  'bt-social1': { label:'BT Doméstico Social 1',     short:'BT-Social1',  taxaFixa:0,    tarifaKwh:3.20,
-                  descricao:'Tarifa social para consumos muito baixos. Smax ≤ 1,2 kVA · consumo ≤ 120 kWh/mês.',
-                  pcOptions:[1.2], pcDefault:1.2 },
-  'bt-social2': { label:'BT Doméstico Social 2',     short:'BT-Social2',  taxaFixa:80,   tarifaKwh:8.33,
-                  descricao:'Tarifa social para consumos baixos. 1,2 < Smax ≤ 3 kVA · consumo ≤ 20 kWh/mês (limite a confirmar).',
-                  pcOptions:[1.2, 2.3, 3.0], pcDefault:2.3, pcMin:1.2, pcMax:3.0 },
-  'bt-mono':    { label:'BT Doméstico Monofásico',   short:'BT-Mono',     taxaFixa:117,  tarifaKwh:14.16,
-                  descricao:'Cliente doméstico monofásico standard. Potência contratada fixa em 4 escalões.',
-                  pcOptions:[3.3, 4.4, 6.6, 9.9], pcDefault:6.6 },
-  'bt-trif':    { label:'BT Doméstico Especial Trifásico', short:'BT-Trif',  taxaFixa:117, tarifaKwh:19.16,
-                  descricao:'Cliente doméstico trifásico especial. Pc entre 13,2 e 49,9 kVA.',
-                  pcMin:13.2, pcMax:49.9, pcDefault:13.2 },
-  'bt-ind':     { label:'BT Industrial',              short:'BT-Ind',      taxaFixa:130,  tarifaKwh:19.17,
-                  descricao:'Cliente industrial em baixa tensão (monofásico ou trifásico).',
-                  pcMin:1, pcMax:999, pcDefault:13.2 },
-  'bt-cs':      { label:'BT Comércio e Serviço',      short:'BT-Com/Serv', taxaFixa:130,  tarifaKwh:16.67,
-                  descricao:'Cliente de comércio e serviços em baixa tensão (monofásico ou trifásico).',
-                  pcMin:1, pcMax:999, pcDefault:13.2 },
-  'mt-ind':     { label:'MT Indústria',               short:'MT-Ind',      taxaFixa:239.20, tarifaKwh:14.99,
-                  descricao:'Cliente industrial em média tensão.',
-                  pcMin:1, pcMax:9999, pcDefault:100 },
-  'at-ind':     { label:'AT Indústria',                short:'AT-Ind',      taxaFixa:239.20, tarifaKwh:14.99,
-                  descricao:'Cliente industrial em alta tensão. Valores replicados do MT-Ind (a confirmar o oficial).',
-                  pcMin:1, pcMax:99999, pcDefault:1000, revisao:true }
-};
 
 /* Ordem canónica de apresentação das 8 categorias (para a UI da nova tab). */
-const ORDEM_CATEGORIAS = ['bt-social1','bt-social2','bt-mono','bt-trif','bt-ind','bt-cs','mt-ind','at-ind'];
 
 /* ============================================================
    DETECÇÃO AUTOMÁTICA DE CATEGORIA — "O Pc é quem manda"
@@ -662,56 +650,6 @@ function calcularCustoENDE(categoria, pc, pi, tarifa){
   return Math.round(comImposto * 100) / 100;
 }
 
-
-const CATALOGO = [
-  { nome:'Lâmpada LED 9W',                 potencia:9,    categoria:'iluminacao',   horasSugeridas:6  },
-  { nome:'Lâmpada LED 10W',                potencia:10,   categoria:'iluminacao',   horasSugeridas:6  },
-  { nome:'Lâmpada LED 12W',                potencia:12,   categoria:'iluminacao',   horasSugeridas:6  },
-  { nome:'Lâmpada Incandescente 60W',      potencia:60,   categoria:'iluminacao',   horasSugeridas:6  },
-  { nome:'Lâmpada Incandescente 100W',     potencia:100,  categoria:'iluminacao',   horasSugeridas:6  },
-  { nome:'Lâmpada Fluorescente Compacta',  potencia:15,   categoria:'iluminacao',   horasSugeridas:6  },
-  { nome:'Candeeiro de Mesa',              potencia:40,   categoria:'iluminacao',   horasSugeridas:3  },
-  { nome:'Frigorífico 150L',               potencia:120,  categoria:'refrigeracao', horasSugeridas:24 },
-  { nome:'Frigorífico 200L',               potencia:200,  categoria:'refrigeracao', horasSugeridas:24 },
-  { nome:'Frigorífico Duplex / Side-by-Side', potencia:350, categoria:'refrigeracao', horasSugeridas:24 },
-  { nome:'Arca Congeladora 300L',          potencia:250,  categoria:'refrigeracao', horasSugeridas:24 },
-  { nome:'Geleira Pequena / Mini-bar',     potencia:90,   categoria:'refrigeracao', horasSugeridas:24 },
-  { nome:'Ventoinha de Mesa',              potencia:55,   categoria:'climatizacao', horasSugeridas:6  },
-  { nome:'Ventilador de Tecto',            potencia:75,   categoria:'climatizacao', horasSugeridas:6  },
-  { nome:'Ar Condicionado 9000 BTU (Convencional)',  potencia:865,  categoria:'climatizacao', horasSugeridas:6 },
-  { nome:'Ar Condicionado 9000 BTU (Inverter)',      potencia:621,  categoria:'climatizacao', horasSugeridas:6 },
-  { nome:'Ar Condicionado 12000 BTU (Convencional)', potencia:1153, categoria:'climatizacao', horasSugeridas:6 },
-  { nome:'Ar Condicionado 12000 BTU (Inverter)',     potencia:808,  categoria:'climatizacao', horasSugeridas:6 },
-  { nome:'Ar Condicionado 18000 BTU (Convencional)', potencia:1702, categoria:'climatizacao', horasSugeridas:5 },
-  { nome:'Ar Condicionado 18000 BTU (Inverter)',     potencia:1241, categoria:'climatizacao', horasSugeridas:5 },
-  { nome:'Ar Condicionado 24000 BTU (Convencional)', potencia:2233, categoria:'climatizacao', horasSugeridas:5 },
-  { nome:'Ar Condicionado 24000 BTU (Inverter)',     potencia:1716, categoria:'climatizacao', horasSugeridas:5 },
-  { nome:'Aquecedor Eléctrico',            potencia:1500, categoria:'climatizacao', horasSugeridas:2  },
-  { nome:'Micro-ondas',                    potencia:1000, categoria:'cozinha',      horasSugeridas:0.5},
-  { nome:'Fogão / Placa de Indução',       potencia:2000, categoria:'cozinha',      horasSugeridas:1  },
-  { nome:'Liquidificador',                 potencia:400,  categoria:'cozinha',      horasSugeridas:0.3},
-  { nome:'Chaleira Eléctrica',             potencia:1500, categoria:'cozinha',      horasSugeridas:0.5},
-  { nome:'Torradeira',                     potencia:800,  categoria:'cozinha',      horasSugeridas:0.2},
-  { nome:'Air Fryer',                      potencia:1400, categoria:'cozinha',      horasSugeridas:0.5},
-  { nome:'Máquina de Lavar Roupa',         potencia:500,  categoria:'lavandaria',   horasSugeridas:1  },
-  { nome:'Ferro de Engomar',               potencia:1200, categoria:'lavandaria',   horasSugeridas:0.7},
-  { nome:'Televisor LED 32"',              potencia:60,   categoria:'eletronica',   horasSugeridas:4  },
-  { nome:'Televisor Plasma 42"',           potencia:250,  categoria:'eletronica',   horasSugeridas:4  },
-  { nome:'Televisor LED 43"',              potencia:90,   categoria:'eletronica',   horasSugeridas:4  },
-  { nome:'Televisor LED 55"',              potencia:120,  categoria:'eletronica',   horasSugeridas:4  },
-  { nome:'Descodificador / TV Box',        potencia:15,   categoria:'eletronica',   horasSugeridas:5  },
-  { nome:'Aparelhagem / Coluna de Som',    potencia:80,   categoria:'eletronica',   horasSugeridas:2  },
-  { nome:'Router Wi-Fi',                   potencia:10,   categoria:'eletronica',   horasSugeridas:24 },
-  { nome:'Consola de Jogos',               potencia:150,  categoria:'eletronica',   horasSugeridas:2  },
-  { nome:'Computador de Secretária',       potencia:250,  categoria:'escritorio',   horasSugeridas:6  },
-  { nome:'Computador Portátil',            potencia:65,   categoria:'escritorio',   horasSugeridas:6  },
-  { nome:'Impressora',                     potencia:30,   categoria:'escritorio',   horasSugeridas:0.3},
-  { nome:'Carregador de Telemóvel',        potencia:5,    categoria:'escritorio',   horasSugeridas:3  },
-  { nome:'Bomba de Água 0.5 HP',           potencia:370,  categoria:'bombagem',     horasSugeridas:2  },
-  { nome:'Bomba de Água 1 HP',             potencia:750,  categoria:'bombagem',     horasSugeridas:2  },
-  { nome:'Câmara de Vigilância',           potencia:10,   categoria:'bombagem',     horasSugeridas:24 }
-];
-
 let state = {
   devices: [],
   categoria: null,        // null = ainda não escolheu o tipo de cliente (gate inicial)
@@ -793,6 +731,7 @@ function mkDevice(base, qty, horas){
 function limparSimuladorParaProximoVisitante(){
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
   state = { devices:[], categoria:null, pc:null, tarifaOverride:null, advice:'' };
+  grupoClienteActivo = null;   // volta a mostrar os 2 cards grandes na tab Tipo de Cliente
   load();
   qrGerado = false; // o QR é estático, mas garante que o gráfico/lista voltam a desenhar-se do zero
 }
@@ -835,16 +774,112 @@ function totals(){
   return { kwhDia, kwhMes, kzDia, kzMes };
 }
 
+/* ============================================================
+   NOVA REGRA — BT Doméstico Social 1 e Social 2: "Condicional Mensal"
+   oficial da ENDE. A categoria só é válida se DUAS condições baterem
+   ao mesmo tempo:
+     1) Smax (Potência Aparente Estimada, calculada do Inventário)
+     2) Consumo Mensal (kWh) — calculado a partir do Período de Uso
+   O Pc continua a existir internamente (fixo em 1,2/3,0 kVA), só
+   para a fórmula da fatura — o utilizador não precisa de o ver.
+   Fórmulas: Smax (kVA) = Σ(Potência × Quantidade) / 0.8 / 1000
+             Pi (Potência Instalada, kVA) = Σ(Potência × Quantidade) / 1000
+   Tabela oficial:
+     Social 1 → Smax ≤ 1,3 kVA  E  Consumo Mensal ≤ 120 kWh
+     Social 2 → 1,2 < Smax ≤ 3,0 kVA  E  Consumo Mensal ≤ 20 kWh
+   ============================================================ */
+const CATEGORIAS_VALIDADAS_POR_SMAX = ['bt-social1', 'bt-social2'];
+const REGRAS_SOCIAL = {
+  'bt-social1': {
+    smaxMin: 0,   smaxMax: 1.3,  consumoMax: 120,
+    sugestaoSmaxAlto: 'Social 2',
+    sugestaoConsumo:  'Social 2'
+  },
+  'bt-social2': {
+    smaxMin: 1.2, smaxMax: 3.0,  consumoMax: 20,
+    sugestaoSmaxBaixo: 'Social 1',
+    sugestaoSmaxAlto:  'BT Doméstico Monofásico',
+    sugestaoConsumo:   'BT Doméstico Monofásico'
+  }
+};
+
+function calcularSmax(){
+  const pInstaladaW = state.devices.reduce((s,d)=> s + (d.potencia * d.quantidade), 0);
+  return pInstaladaW / 0.8 / 1000;
+}
+
+/* Pi = Potência Instalada, em kVA — soma simples das potências, SEM o
+   factor 0.8 do Smax. Usada nas fórmulas de Monofásico/Trifásico. */
+function calcularPotenciaInstalada(){
+  const pInstaladaW = state.devices.reduce((s,d)=> s + (d.potencia * d.quantidade), 0);
+  return pInstaladaW / 1000;
+}
+
+/**
+ * Avalia se a categoria (Social 1 ou Social 2) actual cumpre as DUAS
+ * condições oficiais: Smax e Consumo Mensal.
+ * @returns {{dentro:boolean, motivo:('smax-baixo'|'smax-alto'|'consumo'|null), sugestao:string|null, smax:number, consumoMensal:number}}
+ */
+function avaliarCondicaoSocial(categoria){
+  const regra = REGRAS_SOCIAL[categoria];
+  const smax = calcularSmax();
+  const consumoMensal = totals().kwhMes;
+  if(!regra) return { dentro:true, motivo:null, sugestao:null, smax, consumoMensal };
+
+  if(smax < regra.smaxMin){
+    return { dentro:false, motivo:'smax-baixo', sugestao: regra.sugestaoSmaxBaixo || null, smax, consumoMensal };
+  }
+  if(smax > regra.smaxMax){
+    return { dentro:false, motivo:'smax-alto', sugestao: regra.sugestaoSmaxAlto || null, smax, consumoMensal };
+  }
+  if(consumoMensal > regra.consumoMax){
+    return { dentro:false, motivo:'consumo', sugestao: regra.sugestaoConsumo || null, smax, consumoMensal };
+  }
+  return { dentro:true, motivo:null, sugestao:null, smax, consumoMensal };
+}
+
 function escapeHtml(str){
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
+/* Cria/atualiza o card de Smax no topo do Inventário. Não mexe no HTML:
+   o card é criado dinamicamente e inserido antes da lista de equipamentos.
+   Válido para Social 1 e Social 2 — mostra alerta se Smax OU Consumo Mensal
+   ultrapassarem o limite da categoria actual ("Condicional Mensal"). */
+function renderSmaxCard(){
+  let card = document.getElementById('smax-card');
+  if(!card){
+    card = document.createElement('div');
+    card.id = 'smax-card';
+    card.className = 'tariff-note';
+    card.style.cssText = 'display:block;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-size:.8rem;';
+    listInv.parentNode.insertBefore(card, listInv);
+  }
+  const smax = calcularSmax();
+  const nomeAtual = state.categoria === 'bt-social1' ? 'Social 1' : 'Social 2';
+  const r = CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria) ? avaliarCondicaoSocial(state.categoria) : null;
+  const foraDoLimite = !!(r && !r.dentro);
+
+  card.style.background = foraDoLimite ? 'var(--red-pale)' : 'var(--red-pale-2)';
+  card.style.color = foraDoLimite ? 'var(--red-dark)' : 'var(--slate)';
+
+  let alerta = '';
+  if(foraDoLimite){
+    alerta = (r.motivo === 'consumo')
+      ? `<br><i class="fa-solid fa-triangle-exclamation"></i> Pelo teu consumo de ${fmt(r.consumoMensal,0)} kWh, você não se enquadra no ${nomeAtual}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '')
+      : `<br><i class="fa-solid fa-triangle-exclamation"></i> Pela tua Potência Estimada de ${fmt(smax,2)} kVA, você não se enquadra no ${nomeAtual}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
+  }
+
+  card.innerHTML = `<i class="fa-solid fa-bolt" style="color:var(--orange);"></i> Potência Estimada: <strong>${fmt(smax,2)}</strong> kVA` + alerta;
+}
+
 /* ---------- Render: Inventário ---------- */
 function renderInventory(){
   listInv.innerHTML = '';
   emptyInv.classList.toggle('hidden', state.devices.length > 0);
+  renderSmaxCard();
   state.devices.forEach(d=>{
     const cat = CATEGORIAS[d.categoria] || CATEGORIAS.personalizado;
     const row = document.createElement('div');
@@ -946,6 +981,26 @@ function actualizarCategoriaBanner(){
     if(sub)  sub.textContent  = 'Escolha um tipo de cliente para começar.';
     return;
   }
+  // === Caso especial: Social 1 e Social 2 são validados pelo Smax, não pelo Pc ===
+  if(CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria)){
+    const r = avaliarCondicaoSocial(state.categoria);
+    const tAtual = TARIFARIOS[state.categoria];
+    const nomeAtual = state.categoria === 'bt-social1' ? 'Social 1' : 'Social 2';
+    if(nome) nome.textContent = tAtual.label;
+    if(sub){
+      if(r.dentro){
+        sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(r.smax,2)} kVA e Consumo de ${fmt(r.consumoMensal,0)} kWh/mês · Taxa fixa ${fmt(tAtual.taxaFixa,2)} Kz/kVA · Tarifa ${fmt(tAtual.tarifaKwh,2)} Kz/kWh.`;
+      } else if(r.motivo === 'consumo'){
+        sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pelo teu consumo de ${fmt(r.consumoMensal,0)} kWh, você não se enquadra no ${nomeAtual}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
+      } else {
+        sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pela tua Potência Estimada de ${fmt(r.smax,2)} kVA, você não se enquadra no ${nomeAtual}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
+      }
+    }
+    banner.classList.toggle('corrigido', !r.dentro);
+    banner.classList.toggle('gap-alert', false);
+    return;
+  }
+
   // validar categoria actual contra o Pc actual
   const v = validarCategoriaSelecionada(state.categoria, state.pc);
   const tFinal = TARIFARIOS[v.categoriaFinal];
@@ -966,6 +1021,30 @@ function actualizarCategoriaBanner(){
 }
 
 /* ---------- Render: Resultados (estatísticas + gráfico Chart.js + QR) ---------- */
+/* Cartão "Potência Contratada" no painel de Resultados.
+   Para Social 1 e Social 2 o utilizador não vê o Pc (fixo internamente
+   em 1,2/3,0 kVA só para a fatura) — vê a Potência Estimada da Casa
+   (Smax), que é quem decide a categoria nessas duas. Nas restantes
+   categorias o cartão continua a mostrar o Pc normalmente. */
+function renderCardPotencia(){
+  const pcEl = $('v-pc');
+  if(!pcEl) return;
+  const labelEl = document.querySelector('.stat-pc .stat-label');
+  const cardEl = document.querySelector('.stat-pc');
+  const hasCategoria = clienteSelecionado();
+  const usaSmax = hasCategoria && CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria);
+
+  if(labelEl) labelEl.innerHTML = usaSmax
+    ? '<i class="fa-solid fa-bolt"></i>Potência Estimada da Casa'
+    : '<i class="fa-solid fa-bolt"></i>Potência Contratada';
+  if(cardEl) cardEl.setAttribute('data-tooltip', usaSmax
+    ? 'Potência aparente estimada a partir do inventário (Σ Potência × Quantidade ÷ 0,8) — é ela que decide se você é Social 1 ou Social 2.'
+    : 'Potência contratada com a ENDE — usada para calcular a taxa fixa (TaxaFixa × Pc) que compõe o custo mensal.');
+
+  if(!hasCategoria){ pcEl.textContent = '—'; return; }
+  pcEl.textContent = usaSmax ? fmt(calcularSmax(), 2) : fmt(state.pc, 1);
+}
+
 function renderResults(){
   const hasDevices = state.devices.length > 0;
   const hasCategoria = clienteSelecionado();
@@ -979,24 +1058,22 @@ function renderResults(){
   actualizarCategoriaBanner();
 
   if(!podeMostrar){
-    // actualiza ainda assim o cartão de PC (mostra "—" se não houver categoria)
-    const pcEl = $('v-pc');
-    if(pcEl) pcEl.textContent = hasCategoria ? fmt(state.pc, 1) : '—';
+    // actualiza ainda assim o cartão de Potência (mostra "—" se não houver categoria)
+    renderCardPotencia();
     const taxaFixaCardEl = $('v-taxa-fixa');
     if(taxaFixaCardEl) taxaFixaCardEl.textContent = hasCategoria ? fmt(tarifarioAtual().taxaFixa, 2) : '—';
     return;
   }
 
   const t = totals();
-  // Tarefa 3: cartão de leitura da Potência Contratada
-  const pcEl = $('v-pc');
-  if(pcEl) pcEl.textContent = fmt(state.pc, 1);
+  // Tarefa 3: cartão de leitura da Potência Contratada (ou Potência Estimada, ver renderCardPotencia)
+  renderCardPotencia();
   const taxaFixaCardEl = $('v-taxa-fixa');
   if(taxaFixaCardEl) taxaFixaCardEl.textContent = fmt(tarifarioAtual().taxaFixa, 2);
 
   $('v-kwh-dia').textContent = fmt(t.kwhDia);
   $('v-kwh-mes').textContent = fmt(t.kwhMes);
-  $('v-kz-dia').textContent = fmt(t.kzDia, 0);
+  $('v-kz-dia').textContent = fmt(t.kzDia, 2);
   $('v-kz-mes').textContent = fmt(t.kzMes, 0);
 
   const sorted = [...state.devices].sort((a,b)=> dailyKwh(b) - dailyKwh(a));
@@ -1126,28 +1203,78 @@ document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=> s
 
 /* ============================================================
    TAB 0 — Tipo de Cliente (selecção inicial, gate do fluxo)
+   ------------------------------------------------------------
+   Estrutura em 2 níveis:
+     Nível 1 (raiz): 2 cards grandes — Residencial / Empresarial
+     Nível 2 (sub):  4 cartões de categoria cada (1-4 ou 5-8)
+
+   GRUPOS_CATEGORIAS define quais categorias pertencem a cada grupo.
    ============================================================ */
-function renderTipoCliente(){
-  const wrap = $('tipo-cliente-grid');
-  if(!wrap) return;
-  // (re)desenha os cartões só se a grid estiver vazia — evita flicker e perda de focus
-  if(wrap.children.length) {
-    // apenas actualiza o estado "selected" dos cartões existentes
-    wrap.querySelectorAll('.cat-card').forEach(c=>{
-      c.classList.toggle('selected', c.getAttribute('data-cat') === state.categoria);
-    });
-    return;
+const GRUPOS_CATEGORIAS = {
+  residencial: {
+    label: 'Residencial',
+    icon: 'fa-house-chimney-window',
+    categorias: ['bt-social1','bt-social2','bt-mono','bt-trif']
+  },
+  empresarial: {
+    label: 'Empresarial / Industrial',
+    icon: 'fa-industry',
+    categorias: ['bt-ind','bt-cs','mt-ind','at-ind']
   }
+};
+
+/* Grupo actualmente aberto na tab Tipo de Cliente (null = mostra os 2 cards grandes). */
+let grupoClienteActivo = null;
+
+function renderTipoCliente(){
+  const raiz = $('tipo-cliente-raiz');
+  const sub  = $('tipo-cliente-sub');
+  if(!raiz || !sub) return;
+
+  // mostra o nível apropriado consoante grupoClienteActivo
+  // (NÃO forçamos mais a abertura automática — o utilizador controla onde está)
+  if(grupoClienteActivo){
+    raiz.classList.add('hidden');
+    sub.classList.remove('hidden');
+    renderSubCategorias(grupoClienteActivo);
+  } else {
+    raiz.classList.remove('hidden');
+    sub.classList.add('hidden');
+    // marca qual grupo tem a categoria seleccionada (dica visual para o utilizador)
+    document.querySelectorAll('.card-grande').forEach(card=>{
+      const grupo = card.getAttribute('data-grupo');
+      const temCat = state.categoria && GRUPOS_CATEGORIAS[grupo].categorias.includes(state.categoria);
+      card.classList.toggle('seleccionado', !!temCat);
+    });
+  }
+}
+
+/* Renderiza os cartões de sub-categoria para o grupo escolhido. */
+function renderSubCategorias(grupoKey){
+  const wrap = $('tipo-cliente-grid');
+  const titulo = $('sub-grupos-titulo');
+  const grupo = GRUPOS_CATEGORIAS[grupoKey];
+  if(!wrap || !grupo) return;
+
+  if(titulo){
+    titulo.innerHTML = `<i class="fa-solid ${grupo.icon}"></i> ${escapeHtml(grupo.label)} — escolha a categoria`;
+  }
+
+  // mapeia a chave da categoria para o número de ordem (1-8) para manter a numeração original
+  const idxGlobal = (cat) => ORDEM_CATEGORIAS.indexOf(cat) + 1;
+
   let html = '';
-  ORDEM_CATEGORIAS.forEach((key, i)=>{
+  grupo.categorias.forEach((key)=>{
     const t = TARIFARIOS[key];
+    if(!t) return;
     const isSelected = state.categoria === key;
+    const num = idxGlobal(key);
     const pcHint = t.pcOptions
       ? ('Pc: ' + t.pcOptions.map(v=> fmt(v,1)+' kVA').join(' · '))
       : (t.pcMin && t.pcMax ? ('Pc: ' + fmt(t.pcMin,1) + ' a ' + fmt(t.pcMax,1) + ' kVA') : 'Pc: livre');
     const tooltip = `${t.label} — Taxa fixa: ${fmt(t.taxaFixa,2)} Kz/kVA · Tarifa: ${fmt(t.tarifaKwh,2)} Kz/kWh. ${t.descricao}`;
     html += `<button type="button" class="cat-card ${isSelected?'selected':''}" data-cat="${key}" data-tooltip="${escapeHtml(tooltip)}">
-      <div class="cat-card-no">${i+1}</div>
+      <div class="cat-card-no">${num}</div>
       <div class="cat-card-body">
         <div class="cat-card-name">${escapeHtml(t.label)}</div>
         <div class="cat-card-meta">
@@ -1165,6 +1292,36 @@ function renderTipoCliente(){
     card.addEventListener('click', ()=> selecionarTipoCliente(card.getAttribute('data-cat')));
   });
 }
+
+/* Handler dos 2 cards grandes (nível 1) — abre o grupo correspondente. */
+function abrirGrupoCliente(grupoKey){
+  if(!GRUPOS_CATEGORIAS[grupoKey]) return;
+  grupoClienteActivo = grupoKey;
+  renderTipoCliente();
+}
+
+/* Handler do botão "Voltar" — volta ao nível 1 (os 2 cards grandes). */
+function voltarAosGrupos(){
+  grupoClienteActivo = null;
+  renderTipoCliente();
+}
+
+/* Event listeners para os 2 cards grandes e o botão Voltar.
+   Usamos querySelectorAll com atributo data-grupo para suportar cliques em qualquer
+   elemento dentro do card (ícone, texto, etc.) — o handler sobe até ao botão. */
+document.addEventListener('click', (e)=>{
+  // Procura o elemento com data-grupo mais próximo do alvo do clique
+  const cardGrande = e.target.closest('[data-grupo]');
+  if(cardGrande){
+    abrirGrupoCliente(cardGrande.getAttribute('data-grupo'));
+    return;
+  }
+  // Botão "Voltar" para os grupos
+  if(e.target.closest('#btn-voltar-grupos')){
+    voltarAosGrupos();
+    return;
+  }
+});
 
 function selecionarTipoCliente(cat){
   const t = TARIFARIOS[cat];
@@ -1390,6 +1547,7 @@ $('btn-add-custom').addEventListener('click', ()=>{
    como atalho para trocar de categoria sem voltar atrás, e usa o mesmo path
    de sincronização. */
 function atualizarResumoTarifario(){
+  const pcRow = pcInput ? pcInput.closest('.tariff-row') : null;
   if(!state.categoria){
     // ainda sem categoria: mostra estado vazio no header
     if(tariffHeader) tariffHeader.textContent = 'Tipo de cliente por seleccionar';
@@ -1397,6 +1555,7 @@ function atualizarResumoTarifario(){
     if(avisoGrandes) avisoGrandes.style.display = 'none';
     if(pcInput) pcInput.disabled = true;
     if(tarifaInput) tarifaInput.disabled = true;
+    if(pcRow) pcRow.classList.remove('hidden');
     return;
   }
   const t = tarifarioAtual();
@@ -1405,6 +1564,13 @@ function atualizarResumoTarifario(){
   if(avisoGrandes) avisoGrandes.style.display = t.semDados ? 'block' : 'none';
   if(pcInput) pcInput.disabled = !!t.semDados;
   if(tarifaInput) tarifaInput.disabled = !!t.semDados;
+
+  // Social 1 e Social 2: o Pc é fixo internamente (1,2/3,0 kVA), usado só para
+  // calcular a fatura — não é o utilizador quem o define, então o campo some.
+  // A categoria correcta é validada pelo Smax (ver calcularSmax() / card no Inventário).
+  const escondePc = CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria);
+  if(pcRow) pcRow.classList.toggle('hidden', escondePc);
+  if(pcInput) pcInput.disabled = pcInput.disabled || escondePc;
 }
 
 categoriaSelect.addEventListener('change', ()=>{
@@ -1515,6 +1681,309 @@ $('btn-reset').addEventListener('click', ()=>{
 });
 
 /* ============================================================
+   EXPORTAR RELATÓRIO EM PDF
+   ------------------------------------------------------------
+   Gera um PDF com:
+     - Cabeçalho ENDE · FILDA 2026
+     - Data e hora
+     - Categoria detectada + Pc
+     - Tabela de equipamentos (nome, watts, qtd, horas, kWh/dia, Kz/dia)
+     - Resumo (consumo diário/mensal, custo diário/mensal)
+     - Gráfico de distribuição como imagem
+     - Conselho do técnico (se preenchido)
+     - Rodapé com branding
+   Bibliotecas: jsPDF (geração) + html2canvas (converter o canvas
+   do Chart.js para imagem PNG embutida no PDF)
+   ============================================================ */
+async function exportarRelatorioPDF(){
+  // verifica que as bibliotecas estão carregadas
+  if(typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF){
+    Swal.fire({
+      title:'Biblioteca indisponível',
+      text:'Não foi possível carregar o jsPDF. Verifique a ligação à internet (o CDN pode estar bloqueado).',
+      icon:'error', confirmButtonColor:'#E85D04'
+    });
+    return;
+  }
+  if(!state.devices.length){
+    Swal.fire({
+      title:'Sem dados',
+      text:'Adicione pelo menos um equipamento antes de exportar o relatório.',
+      icon:'warning', confirmButtonColor:'#E85D04'
+    });
+    return;
+  }
+
+  // mostra um loader
+  Swal.fire({
+    title:'A gerar relatório...',
+    text:'Aguarde alguns segundos.',
+    allowOutsideClick:false,
+    didOpen: ()=> Swal.showLoading()
+  });
+
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W = 210; // largura A4 em mm
+    const H = 297; // altura A4 em mm
+    const M = 14;  // margem
+    let y = 0;
+
+    // === CABEÇALHO ===
+    // faixa vermelha no topo
+    doc.setFillColor(200, 16, 46);
+    doc.rect(0, 0, W, 28, 'F');
+    // título
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('ENDE — Simulador de Consumo', M, 13);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('FILDA 2026 · Literacia Energética', M, 20);
+    // data no canto direito
+    const agora = new Date();
+    const dataStr = agora.toLocaleString('pt-PT', {
+      day:'2-digit', month:'2-digit', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    });
+    doc.text('Emitido em: ' + dataStr, W - M, 20, { align:'right' });
+    y = 36;
+
+    // === IDENTIFICAÇÃO DO CLIENTE ===
+    doc.setTextColor(11, 21, 32);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Identificação do Cliente', M, y);
+    y += 5;
+    doc.setDrawColor(228, 230, 235);
+    doc.line(M, y, W - M, y);
+    y += 5;
+
+    const v = validarCategoriaSelecionada(state.categoria, state.pc);
+    const tFinal = TARIFARIOS[v.categoriaFinal];
+    const tInfo = TARIFARIOS[state.categoria] || {label:'—'};
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    let linhaCli1 = 'Categoria seleccionada: ' + tInfo.label;
+    if(v.mudou){
+      linhaCli1 += '  (reclassificada para: ' + tFinal.label + ')';
+    }
+    doc.text(linhaCli1, M, y); y += 5;
+    doc.text('Categoria detectada pelo Pc: ' + tFinal.label, M, y); y += 5;
+    doc.text('Potência Contratada (Pc): ' + fmt(state.pc, 2) + ' kVA', M, y); y += 5;
+    doc.text('Taxa Fixa: ' + fmt(tFinal.taxaFixa, 2) + ' Kz/kVA    Tarifa: ' + fmt(tFinal.tarifaKwh, 2) + ' Kz/kWh', M, y); y += 9;
+
+    // === TABELA DE EQUIPAMENTOS ===
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Equipamentos Simulados', M, y); y += 5;
+    doc.line(M, y, W - M, y); y += 5;
+
+    // cabeçalho da tabela
+    const colX = [M, M+78, M+100, M+118, M+138, M+160, M+183];
+    const colW = [78, 22, 18, 20, 22, 23, 0];
+    const headers = ['Equipamento', 'Watts (un.)', 'Qtd.', 'Horas/dia', 'kWh/dia', 'Kz/dia', ''];
+    doc.setFillColor(245, 246, 248);
+    doc.rect(M, y-4, W-2*M, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(86, 91, 100);
+    headers.forEach((h, i)=> doc.text(h, colX[i], y));
+    y += 7;
+
+    // linhas dos equipamentos
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(11, 21, 32);
+    const tarifa = tarifaAtual();
+    const sorted = [...state.devices].sort((a,b)=> dailyKwh(b) - dailyKwh(a));
+    sorted.forEach((d, idx)=>{
+      if(y > H - 30){
+        doc.addPage();
+        y = 20;
+      }
+      const kwh = dailyKwh(d);
+      const kz = kwh * tarifa;
+      // zebra
+      if(idx % 2 === 0){
+        doc.setFillColor(250, 251, 252);
+        doc.rect(M, y-4, W-2*M, 6.5, 'F');
+      }
+      // nome (trunca se for muito comprido)
+      let nome = d.nome;
+      if(nome.length > 42) nome = nome.substring(0, 41) + '…';
+      doc.text(nome, colX[0], y);
+      doc.text(fmt(d.potencia, 0) + ' W', colX[1], y);
+      doc.text(String(d.quantidade), colX[2], y);
+      doc.text(fmt(d.horas, 1) + ' h', colX[3], y);
+      doc.text(fmt(kwh, 3), colX[4], y);
+      doc.text(fmt(kz, 0) + ' Kz', colX[5], y);
+      y += 6.5;
+    });
+    y += 4;
+
+    // === RESUMO ===
+    if(y > H - 60){
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Resumo do Consumo e Custo', M, y); y += 5;
+    doc.line(M, y, W - M, y); y += 6;
+
+    const t = totals();
+    // 2 colunas: esquerda = consumo, direita = custo
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(86, 91, 100);
+    doc.text('CONSUMO', M, y);
+    doc.text('CUSTO ESTIMADO', W/2 + 5, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(11, 21, 32);
+    doc.text('Diário:  ' + fmt(t.kwhDia) + ' kWh', M, y);
+    doc.text('Diário:  ' + fmt(t.kzDia, 0) + ' Kz', W/2 + 5, y);
+    y += 6;
+    doc.text('Mensal: ' + fmt(t.kwhMes) + ' kWh', M, y);
+    // custo mensal em destaque (vermelho)
+    doc.setTextColor(200, 16, 46);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Mensal: ' + fmt(t.kzMes, 0) + ' Kz', W/2 + 5, y);
+    doc.setTextColor(11, 21, 32);
+    doc.setFont('helvetica', 'normal');
+    y += 6;
+
+    // nota sobre o IVA
+    doc.setFontSize(7.5);
+    doc.setTextColor(138, 143, 152);
+    doc.text('* Custos calculados com a fórmula oficial ENDE: (TaxaFixa × Pc + Tarifa × Consumo) × 1,14 (IVA 14%). Valores de referência — confirme com a categoria real do cliente.', M, y);
+    y += 8;
+
+    // === GRÁFICO ===
+    if(y > H - 80){
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(11, 21, 32);
+    doc.text('Distribuição do Consumo', M, y); y += 5;
+    doc.line(M, y, W - M, y); y += 6;
+
+    // capturar o canvas do Chart.js como imagem
+    const canvas = document.getElementById('grafico-consumo');
+    if(canvas && typeof html2canvas !== 'undefined'){
+      try{
+        // captura como imagem com fundo branco
+        const imgCanvas = await html2canvas(canvas, {
+          backgroundColor:'#ffffff',
+          scale: 2, // alta resolução
+          logging: false
+        });
+        const imgData = imgCanvas.toDataURL('image/png');
+        // dimensões: 120mm de largura, altura proporcional
+        const imgW = 120;
+        const imgH = (imgCanvas.height * imgW) / imgCanvas.width;
+        const imgX = (W - imgW) / 2; // centrado
+        doc.addImage(imgData, 'PNG', imgX, y, imgW, Math.min(imgH, 80));
+        y += Math.min(imgH, 80) + 6;
+      }catch(e){
+        console.warn('[ENDE PDF] Não foi possível capturar o gráfico:', e);
+        doc.text('(Gráfico não disponível para exportação)', M, y);
+        y += 6;
+      }
+    }
+
+    // === MAIORES CONSUMIDORES ===
+    if(y > H - 50){
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Maiores Consumidores', M, y); y += 5;
+    doc.line(M, y, W - M, y); y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    sorted.slice(0, 5).forEach((d, i)=>{
+      const kwh = dailyKwh(d);
+      const pct = (kwh / t.kwhDia) * 100;
+      let nm = d.nome;
+      if(nm.length > 50) nm = nm.substring(0, 49) + '…';
+      doc.text((i+1) + '. ' + nm + ' — ' + fmt(kwh) + ' kWh/dia (' + fmt(pct, 1) + '% do total)', M, y);
+      y += 5;
+    });
+    y += 4;
+
+    // === CONSELHO DO TÉCNICO ===
+    if(state.advice && state.advice.trim()){
+      if(y > H - 40){
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('Conselho do Técnico ENDE', M, y); y += 5;
+      doc.line(M, y, W - M, y); y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      // quebra o texto em linhas de ~90 caracteres
+      const linhas = doc.splitTextToSize(state.advice, W - 2*M);
+      linhas.forEach(linha => {
+        if(y > H - 20){ doc.addPage(); y = 20; }
+        doc.text(linha, M, y);
+        y += 5;
+      });
+      y += 4;
+    }
+
+    // === RODAPÉ ===
+    const totalPaginas = doc.internal.getNumberOfPages();
+    for(let p = 1; p <= totalPaginas; p++){
+      doc.setPage(p);
+      // linha do rodapé
+      doc.setDrawColor(228, 230, 235);
+      doc.line(M, H - 12, W - M, H - 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(138, 143, 152);
+      doc.text('ENDE · FILDA 2026 — Simulador de Literacia Energética', M, H - 7);
+      doc.text('Página ' + p + ' de ' + totalPaginas, W - M, H - 7, { align:'right' });
+    }
+
+    // === GUARDAR ===
+    const nomeFicheiro = 'ENDE_Simulador_' + agora.toISOString().slice(0,10) + '.pdf';
+    doc.save(nomeFicheiro);
+
+    Swal.close();
+    // feedback de sucesso
+    Swal.fire({
+      title:'Relatório gerado!',
+      html:'<p>O ficheiro <strong>' + nomeFicheiro + '</strong> foi descarregado.</p><p style="margin-top:8px;font-size:0.85rem;color:#565B64;">Pode entregá-lo ao cliente como recordação da simulação.</p>',
+      icon:'success',
+      confirmButtonColor:'#E85D04',
+      timer: 4000,
+      timerProgressBar: true
+    });
+  }catch(err){
+    console.error('[ENDE PDF] Erro ao gerar relatório:', err);
+    Swal.fire({
+      title:'Erro ao gerar PDF',
+      html:'<p>Ocorreu um erro inesperado:</p><pre style="margin-top:8px;font-size:0.8rem;background:#f5f6f8;padding:8px;border-radius:6px;white-space:pre-wrap;">' + escapeHtml(String(err && err.message || err)) + '</pre>',
+      icon:'error',
+      confirmButtonColor:'#E85D04'
+    });
+  }
+}
+
+$('btn-exportar-pdf').addEventListener('click', exportarRelatorioPDF);
+
+/* ============================================================
    FINALIZAR SIMULAÇÃO → convite para a selfie (SweetAlert2)
    ============================================================ */
 $('btn-finalizar').addEventListener('click', ()=>{
@@ -1595,7 +2064,45 @@ renderAll();
 // o utilizador vê o tipo de cliente seleccionado e pode avançar ou trocar.
 switchTab(0);
 escreverTexto(document.getElementById('texto-boas-vindas'), TEXTO_BOAS_VINDAS, 26);
-tocarLoopBoasVindas(); // arranca o loop logo na primeira visita (fica à espera do 1º toque se o navegador bloquear o autoplay)
+
+/* ============================================================
+   DESBLOQUEIO DA VOZ (autoplay policy do Chrome)
+   ------------------------------------------------------------
+   O Chrome (e a maioria dos browsers modernos) bloqueia
+   speechSynthesis.speak() até o utilizador interagir com a
+   página (clique, toque, tecla). Por isso, NÃO arrancamos o
+   loop de boas-vindas em load time — esperamos pelo primeiro
+   gesto do utilizador.
+
+   Quando ele clicar em qualquer sítio (ou tocar no ecrã), fazemos:
+     1. Um "warm-up" silencioso com uma utterance vazia
+        (algumas implementações só desbloqueiam depois da 1ª fala)
+     2. Arrancamos o loop de boas-vindas normalmente
+   ============================================================ */
+let vozDesbloqueada = false;
+function desbloquearVoz(){
+  if(vozDesbloqueada) return;
+  vozDesbloqueada = true;
+  if(!('speechSynthesis' in window)) return;
+  try{
+    // warm-up: utterance vazia, volume 0 — apenas para "acordar" o motor
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    u.lang = 'pt-PT';
+    if(vozPortuguesa) u.voice = vozPortuguesa;
+    window.speechSynthesis.speak(u);
+    console.info('[ENDE voz] Voz desbloqueada após interação do utilizador.');
+  }catch(e){ console.warn('[ENDE voz] Erro no warm-up:', e); }
+  // arranca o loop de boas-vindas se ainda estivermos na Tela 1
+  if(estadoAtual === 'boas-vindas'){
+    setTimeout(()=> tocarLoopBoasVindas(), 200);
+  }
+}
+// escuta o PRIMEIRO clique/toque/tecla em todo o document
+['click','touchstart','keydown'].forEach(evt=>{
+  document.addEventListener(evt, desbloquearVoz, { once: true, passive: true });
+});
+// nota: não chamamos tocarLoopBoasVindas() no arranque — só depois do 1º clique.
 
 /* ============================================================
    Tarefa 2 — MOTOR DE TOOLTIPS DE ACESSIBILIDADE
