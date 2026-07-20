@@ -23,10 +23,10 @@ const CATEGORIAS = {
 
 const TARIFARIOS = {
   'bt-social1': { label:'BT Doméstico Social 1',     short:'BT-Social1',  taxaFixa:0,    tarifaKwh:3.20,
-                  descricao:'Tarifa social para consumos muito baixos. Smax ≤ 1,2 kVA · consumo ≤ 120 kWh/mês.',
+                  descricao:'Tarifa social para consumos muito baixos. Smax ≤ 1,3 kVA · consumo ≤ 120 kWh/mês.',
                   pcOptions:[1.2], pcDefault:1.2 },
   'bt-social2': { label:'BT Doméstico Social 2',     short:'BT-Social2',  taxaFixa:80,   tarifaKwh:8.33,
-                  descricao:'Tarifa social para consumos baixos. 1,2 < Smax ≤ 3 kVA · consumo ≤ 200 kWh/mês (limite a confirmar).',
+                  descricao:'Tarifa social para consumos baixos. 1,2 < Smax ≤ 3 kVA · consumo ≤ 200 kWh/mês.',
                   pcOptions:[1.2, 2.3, 3.0], pcDefault:2.3, pcMin:1.2, pcMax:3.0 },
   'bt-mono':    { label:'BT Doméstico Monofásico',   short:'BT-Mono',     taxaFixa:117,  tarifaKwh:14.16,
                   descricao:'Cliente doméstico monofásico standard. Potência contratada fixa em 4 escalões.',
