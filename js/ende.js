@@ -535,7 +535,7 @@ const STORAGE_KEY = 'ende_totem_filda2026';
    TARIFÁRIOS OFICIAIS DA ENDE — 8 categorias (actualizado em
    2026-07, cruzado com a foto do tarifário enviada pelo técnico):
      1. BT Doméstico Social 1     — sem taxa fixa, 3,20 Kz/kWh (Smax ≤ 1,2 kVA)
-     2. BT Doméstico Social 2     — 80 Kz/kVA, 8,33 Kz/kWh (1,2 < Smax ≤ 3 kVA)
+     2. BT Doméstico Social 2     — sem taxa fixa, 8,33 Kz/kWh (1,2 ≤ Smax ≤ 3 kVA)
      3. BT Doméstico Monofásico   — 117 Kz/kVA, 14,16 Kz/kWh (Pc fixo: 3,3/4,4/6,6/9,9)
      4. BT Doméstico Especial Trifásico — 117 Kz/kVA, 19,16 Kz/kWh (Pc: 13,2 a 49,9)
      5. BT Industrial             — 130 Kz/kVA, 19,17 Kz/kWh (M.F. e Trifásico)
@@ -645,7 +645,14 @@ function validarCategoriaSelecionada(categoriaSelecionada, Pc){
 function calcularCustoENDE(categoria, pc, pi, tarifa){
   const t = TARIFARIOS[categoria] || TARIFARIOS['bt-mono'];
   if(t.semDados) return 0; // "Grandes Clientes" ainda não tem tarifário público confirmado
-  const subtotal = (t.taxaFixa * pc) + (tarifa * pi);
+  let subtotal;
+  if(categoria === 'bt-social1' || categoria === 'bt-social2'){
+    // Social 1 e Social 2: só tarifa por kWh, sem taxa fixa nem Pc
+    subtotal = tarifa * pi;
+  } else {
+    // Mono, Trif, Industrial, Comercial: TaxaFixa × Pc + Tarifa × Pi
+    subtotal = (t.taxaFixa * pc) + (tarifa * pi);
+  }
   const comImposto = subtotal * 1.14;
   return Math.round(comImposto * 100) / 100;
 }
@@ -761,7 +768,8 @@ function tarifarioAtual(){
 // tarifa efetivamente aplicada: o valor oficial da categoria, a não ser que
 // o utilizador a tenha substituído manualmente no campo "Tarifa (Kz/kWh)"
 function tarifaAtual(){
-  const t = tarifarioAtual();
+  const catFinal = determinarCategoriaFinal().categoriaFinal;
+  const t = TARIFARIOS[catFinal] || TARIFARIOS['bt-mono'];
   if(t.semDados) return 0;
   return (typeof state.tarifaOverride === 'number' && !isNaN(state.tarifaOverride)) ? state.tarifaOverride : t.tarifaKwh;
 }
@@ -770,8 +778,11 @@ function totals(){
   const kwhMes = kwhDia * 30;
   const tarifa = tarifaAtual();
 
+  // Categoria final determinada por Smax + Consumo (cascata Social 1 → Social 2 → Mono)
+  const catFinal = determinarCategoriaFinal().categoriaFinal;
+
   let kzDia, kzMes;
-  if(CATEGORIAS_COM_CARD_PI.includes(state.categoria)){
+  if(CATEGORIAS_COM_CARD_PI.includes(catFinal)){
     // Monofásico / Trifásico Especial: a fórmula oficial usa Pi = Potência
     // Instalada (kVA, fixo — soma dos equipamentos sem multiplicar por horas),
     // NÃO o consumo em kWh. É uma fórmula mensal por natureza (Pi não muda
@@ -779,13 +790,13 @@ function totals(){
     // consistente com as outras categorias — confirmar com o técnico da ENDE
     // se esta divisão faz sentido para o totem.
     const pi = calcularPotenciaInstalada();
-    kzMes = calcularCustoENDE(state.categoria, state.pc, pi, tarifa);
+    kzMes = calcularCustoENDE(catFinal, state.pc, pi, tarifa);
     kzDia = Math.round((kzMes / 30) * 100) / 100;
   } else {
-    kzDia = calcularCustoENDE(state.categoria, state.pc, kwhDia, tarifa);
-    kzMes = calcularCustoENDE(state.categoria, state.pc, kwhMes, tarifa);
+    kzDia = calcularCustoENDE(catFinal, state.pc, kwhDia, tarifa);
+    kzMes = calcularCustoENDE(catFinal, state.pc, kwhMes, tarifa);
   }
-  return { kwhDia, kwhMes, kzDia, kzMes };
+  return { kwhDia, kwhMes, kzDia, kzMes, catFinal };
 }
 
 /* ============================================================
@@ -799,13 +810,13 @@ function totals(){
    Fórmulas: Smax (kVA) = Σ(Potência × Quantidade) / 0.8 / 1000
              Pi (Potência Instalada, kVA) = Σ(Potência × Quantidade) / 1000
    Tabela oficial:
-     Social 1 → Smax ≤ 1,3 kVA  E  Consumo Mensal ≤ 120 kWh
-     Social 2 → 1,2 < Smax ≤ 3,0 kVA  E  Consumo Mensal ≤ 20 kWh
+     Social 1 → Smax ≤ 1,2 kVA  E  Consumo Mensal ≤ 120 kWh
+     Social 2 → 1,2 ≤ Smax ≤ 3,0 kVA  E  Consumo Mensal ≤ 20 kWh
    ============================================================ */
 const CATEGORIAS_VALIDADAS_POR_SMAX = ['bt-social1', 'bt-social2'];
 const REGRAS_SOCIAL = {
   'bt-social1': {
-    smaxMin: 0,   smaxMax: 1.3,  consumoMax: 120,
+    smaxMin: 0,   smaxMax: 1.2,  consumoMax: 120,
     sugestaoSmaxAlto: 'Social 2',
     sugestaoConsumo:  'Social 2'
   },
@@ -890,6 +901,86 @@ function avaliarFaixaSmax(categoria){
   return { dentro:true, motivo:null, sugestao:null, smax };
 }
 
+
+
+/**
+ * Determina a categoria final do cliente testando em cascata:
+ *   1. Social 1  (Smax ≤ 1,2 kVA  E  Consumo ≤ 120 kWh/mês)
+ *   2. Social 2  (1,2 ≤ Smax ≤ 3,0 kVA  E  Consumo ≤ 200 kWh/mês)
+ *   3. Mono      (fallback)
+ * Para cada categoria testada, devolve se está dentro e por que falhou.
+ * @returns {{categoriaFinal:string, smax:number, consumoMensal:number, s1:Object, s2:Object}}
+ */
+function determinarCategoriaFinal(){
+  const smax = calcularSmax();
+  const kwhDia = state.devices.reduce((s,d)=> s + dailyKwh(d), 0);
+  const consumoMensal = kwhDia * 30;
+
+  const result = {
+    smax, consumoMensal,
+    categoriaFinal: 'bt-mono',
+    s1: { dentro: false, falhaSmax: false, falhaConsumo: false, falhaAmbos: false, sugestao: null },
+    s2: { dentro: false, falhaSmax: false, falhaConsumo: false, falhaAmbos: false, sugestao: null },
+    mono: { dentro: false, falhaSmax: false, sugestao: null },
+    trif: { dentro: false, falhaSmax: false, sugestao: null }
+  };
+
+  // --- Testar Social 1 ---
+  const r1 = REGRAS_SOCIAL['bt-social1'];
+  const s1DentroSmax = smax >= r1.smaxMin && smax <= r1.smaxMax;
+  const s1DentroConsumo = consumoMensal <= r1.consumoMax;
+  result.s1.dentro = s1DentroSmax && s1DentroConsumo;
+  result.s1.falhaSmax = !s1DentroSmax;
+  result.s1.falhaConsumo = !s1DentroConsumo;
+  result.s1.falhaAmbos = !s1DentroSmax && !s1DentroConsumo;
+  result.s1.sugestao = r1.sugestaoSmaxAlto || 'Social 2';
+
+  if(result.s1.dentro){
+    result.categoriaFinal = 'bt-social1';
+    return result;
+  }
+
+  // --- Testar Social 2 ---
+  const r2 = REGRAS_SOCIAL['bt-social2'];
+  const s2DentroSmax = smax >= r2.smaxMin && smax <= r2.smaxMax;
+  const s2DentroConsumo = consumoMensal <= r2.consumoMax;
+  result.s2.dentro = s2DentroSmax && s2DentroConsumo;
+  result.s2.falhaSmax = !s2DentroSmax;
+  result.s2.falhaConsumo = !s2DentroConsumo;
+  result.s2.falhaAmbos = !s2DentroSmax && !s2DentroConsumo;
+  result.s2.sugestao = r2.sugestaoSmaxAlto || 'BT Doméstico Monofásico';
+
+  if(result.s2.dentro){
+    result.categoriaFinal = 'bt-social2';
+    return result;
+  }
+
+  // --- Testar Mono (por Smax) ---
+  const rMono = REGRAS_SMAX_PI['bt-mono'];
+  result.mono.dentro = smax >= rMono.smaxMin && smax <= rMono.smaxMax;
+  result.mono.falhaSmax = !result.mono.dentro;
+  result.mono.sugestao = rMono.sugestaoSmaxAlto || 'Trifásico Especial';
+
+  if(result.mono.dentro){
+    result.categoriaFinal = 'bt-mono';
+    return result;
+  }
+
+  // --- Testar Trif (por Smax) ---
+  const rTrif = REGRAS_SMAX_PI['bt-trif'];
+  result.trif.dentro = smax >= rTrif.smaxMin && smax <= rTrif.smaxMax;
+  result.trif.falhaSmax = !result.trif.dentro;
+  result.trif.sugestao = rTrif.sugestaoSmaxAlto || 'Consultar ENDE';
+
+  if(result.trif.dentro){
+    result.categoriaFinal = 'bt-trif';
+    return result;
+  }
+
+  // --- Acima de 49,9 kVA: Trifásico como fallback ---
+  result.categoriaFinal = 'bt-trif';
+  return result;
+}
 function escapeHtml(str){
   const div = document.createElement('div');
   div.textContent = str;
@@ -1019,8 +1110,12 @@ function renderHours(){
 }
 
 /* ---------- Banner "Você é do tipo X" (no painel de Resultados) ----------
-   Mostra a categoria detectada pelo Pc — que pode diferir da escolhida
-   pelo utilizador se ele tiver mexido no Pc manualmente. */
+   O sistema decide a categoria final testando em cascata:
+     1. Social 1  (Smax ≤ 1,2 kVA  E  Consumo ≤ 120 kWh/mês)
+     2. Social 2  (1,2 ≤ Smax ≤ 3,0 kVA  E  Consumo ≤ 200 kWh/mês)
+     3. Mono      (3,1 ≤ Smax ≤ 9,9 kVA)
+     4. Trif      (13,2 ≤ Smax ≤ 49,9 kVA)
+   Banner, categoria final e custo usam sempre a mesma decisão. */
 function actualizarCategoriaBanner(){
   const banner = $('categoria-banner');
   if(!banner) return;
@@ -1033,59 +1128,77 @@ function actualizarCategoriaBanner(){
     if(sub)  sub.textContent  = 'Escolha um tipo de cliente para começar.';
     return;
   }
-  // === Caso especial: Social 1 e Social 2 são validados pelo Smax, não pelo Pc ===
-  if(CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria)){
-    const r = avaliarCondicaoSocial(state.categoria);
-    const tAtual = TARIFARIOS[state.categoria];
-    const nomeAtual = state.categoria === 'bt-social1' ? 'Social 1' : 'Social 2';
-    if(nome) nome.textContent = tAtual.label;
-    if(sub){
-      if(r.dentro){
-        sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(r.smax,2)} kVA e Consumo de ${fmt(r.consumoMensal,0)} kWh/mês · Taxa fixa ${fmt(tAtual.taxaFixa,2)} Kz/kVA · Tarifa ${fmt(tAtual.tarifaKwh,2)} Kz/kWh.`;
-      } else if(r.motivo === 'consumo'){
-        sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pelo teu consumo de ${fmt(r.consumoMensal,0)} kWh, você não se enquadra no ${nomeAtual}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
-      } else {
-        sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pela tua Potência Estimada de ${fmt(r.smax,2)} kVA, você não se enquadra no ${nomeAtual}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
-      }
-    }
-    banner.classList.toggle('corrigido', !r.dentro);
-    banner.classList.toggle('gap-alert', false);
-    return;
-  }
 
-  // === Caso especial: Monofásico e Trifásico Especial validados pela faixa de Smax
-  // (o Pc continua a ser escolhido pelo cliente — disjuntor — e entra na fórmula normalmente) ===
-  if(CATEGORIAS_COM_CARD_PI.includes(state.categoria)){
-    const r = avaliarFaixaSmax(state.categoria);
-    const tAtual = TARIFARIOS[state.categoria];
-    if(nome) nome.textContent = tAtual.label;
-    if(sub){
-      sub.innerHTML = r.dentro
-        ? `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(r.smax,2)} kVA · Pc ${fmt(state.pc,1)} kVA · Taxa fixa ${fmt(tAtual.taxaFixa,2)} Kz/kVA · Tarifa ${fmt(tAtual.tarifaKwh,2)} Kz/kWh.`
-        : `<i class="fa-solid fa-triangle-exclamation"></i> Pela tua Potência Estimada de ${fmt(r.smax,2)} kVA, você não se enquadra no ${tAtual.label}.` + (r.sugestao ? ` Sugestão: ${r.sugestao}.` : '');
-    }
-    banner.classList.toggle('corrigido', !r.dentro);
-    banner.classList.toggle('gap-alert', false);
-    return;
-  }
+  // Determinar categoria final por Smax + Consumo (cascata)
+  const d = determinarCategoriaFinal();
+  const catFinal = d.categoriaFinal;
+  const tFinal = TARIFARIOS[catFinal];
+  const smax = d.smax;
+  const consumo = d.consumoMensal;
 
-  // validar categoria actual contra o Pc actual
-  const v = validarCategoriaSelecionada(state.categoria, state.pc);
-  const tFinal = TARIFARIOS[v.categoriaFinal];
   if(nome) nome.textContent = tFinal.label;
+
   if(sub){
-    const pcTxt = fmt(state.pc, 1) + ' kVA';
-    if(v.mudou){
-      sub.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Categoria original era <strong>${escapeHtml(TARIFARIOS[state.categoria]?.label || '—')}</strong>. Pelo teu Pc de ${escapeHtml(pcTxt)}, foste reclassificado.`;
-    } else if(v.gap){
-      sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pc de ${escapeHtml(pcTxt)} está fora dos escalões oficiais — usámos a categoria mais próxima.`;
-    } else {
-      sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Pc de ${escapeHtml(pcTxt)} · Taxa fixa ${fmt(tFinal.taxaFixa,2)} Kz/kVA · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh.`;
+    if(catFinal === 'bt-social1'){
+      // Passou no Social 1
+      sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(smax,2)} kVA e Consumo de ${fmt(consumo,0)} kWh/mês · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh.`;
+      banner.classList.remove('corrigido', 'gap-alert');
+    }
+    else if(catFinal === 'bt-social2'){
+      // Passou no Social 2 (não passou no Social 1)
+      let textoExtra = '';
+      if(d.s1.falhaAmbos){
+        textoExtra = ` Pela tua Potência de ${fmt(smax,2)} kVA e pelo Consumo de ${fmt(consumo,0)} kWh/mês, você não se enquadra no Social 1.`;
+      } else if(d.s1.falhaSmax){
+        textoExtra = ` Pela tua Potência Estimada de ${fmt(smax,2)} kVA, você não se enquadra no Social 1.`;
+      } else if(d.s1.falhaConsumo){
+        textoExtra = ` Pelo teu Consumo de ${fmt(consumo,0)} kWh/mês, você não se enquadra no Social 1.`;
+      }
+      sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(smax,2)} kVA e Consumo de ${fmt(consumo,0)} kWh/mês.${textoExtra} Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh.`;
+      banner.classList.remove('corrigido', 'gap-alert');
+    }
+    else if(catFinal === 'bt-mono'){
+      // Passou no Mono (não passou no Social 2)
+      let textoFalha = '';
+      if(d.s2.falhaAmbos){
+        textoFalha = `Pela tua Potência de ${fmt(smax,2)} kVA e pelo Consumo de ${fmt(consumo,0)} kWh/mês, você não se enquadra no Social 2. `;
+      } else if(d.s2.falhaSmax){
+        textoFalha = `Pela tua Potência Estimada de ${fmt(smax,2)} kVA, você não se enquadra no Social 2. `;
+      } else if(d.s2.falhaConsumo){
+        textoFalha = `Pelo teu Consumo de ${fmt(consumo,0)} kWh/mês, você não se enquadra no Social 2. `;
+      }
+      const taxaTxt = tFinal.taxaFixa > 0 ? ` · Taxa fixa ${fmt(tFinal.taxaFixa,2)} Kz/kVA` : '';
+      sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(smax,2)} kVA · Pc ${fmt(state.pc,1)} kVA${taxaTxt} · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh. ${textoFalha}`;
+      banner.classList.remove('corrigido', 'gap-alert');
+    }
+    else if(catFinal === 'bt-trif'){
+      // Passou no Trif (não passou no Mono)
+      let textoFalha = '';
+      if(d.mono.falhaSmax){
+        textoFalha = `Pela tua Potência Estimada de ${fmt(smax,2)} kVA, você não se enquadra no Monofásico. `;
+      }
+      const taxaTxt = tFinal.taxaFixa > 0 ? ` · Taxa fixa ${fmt(tFinal.taxaFixa,2)} Kz/kVA` : '';
+      sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Smax de ${fmt(smax,2)} kVA · Pc ${fmt(state.pc,1)} kVA${taxaTxt} · Tarifa ${fmt(tFinal.tarifaKwh,2)} Kz/kWh. ${textoFalha}`;
+      banner.classList.remove('corrigido', 'gap-alert');
+    }
+    else {
+      // Outras categorias (industriais) — lógica antiga por Pc
+      const v = validarCategoriaSelecionada(state.categoria, state.pc);
+      const tFinalPc = TARIFARIOS[v.categoriaFinal];
+      if(nome) nome.textContent = tFinalPc.label;
+      const pcTxt = fmt(state.pc, 1) + ' kVA';
+      if(v.mudou){
+        sub.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Categoria original era <strong>${escapeHtml(TARIFARIOS[state.categoria]?.label || '—')}</strong>. Pelo teu Pc de ${escapeHtml(pcTxt)}, foste reclassificado.`;
+      } else if(v.gap){
+        sub.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Pc de ${escapeHtml(pcTxt)} está fora dos escalões oficiais — usámos a categoria mais próxima.`;
+      } else {
+        const taxaTxt = tFinalPc.taxaFixa > 0 ? ` · Taxa fixa ${fmt(tFinalPc.taxaFixa,2)} Kz/kVA` : '';
+        sub.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirmado pelo Pc de ${escapeHtml(pcTxt)}${taxaTxt} · Tarifa ${fmt(tFinalPc.tarifaKwh,2)} Kz/kWh.`;
+      }
+      banner.classList.toggle('corrigido', v.mudou);
+      banner.classList.toggle('gap-alert', !v.mudou && v.gap);
     }
   }
-  // estados visuais do banner
-  banner.classList.toggle('corrigido', v.mudou);
-  banner.classList.toggle('gap-alert', !v.mudou && v.gap);
 }
 
 /* ---------- Render: Resultados (estatísticas + gráfico Chart.js + QR) ---------- */
@@ -1100,7 +1213,9 @@ function renderCardPotencia(){
   const labelEl = document.querySelector('.stat-pc .stat-label');
   const cardEl = document.querySelector('.stat-pc');
   const hasCategoria = clienteSelecionado();
-  const usaSmax = hasCategoria && CATEGORIAS_VALIDADAS_POR_SMAX.includes(state.categoria);
+  // Usa a categoria FINAL (decidida por Smax+Consumo) em vez da escolhida
+  const catFinal = hasCategoria ? determinarCategoriaFinal().categoriaFinal : null;
+  const usaSmax = hasCategoria && CATEGORIAS_VALIDADAS_POR_SMAX.includes(catFinal);
 
   if(labelEl) labelEl.innerHTML = usaSmax
     ? '<i class="fa-solid fa-bolt"></i>Potência Estimada da Casa'
@@ -1366,7 +1481,8 @@ function renderSubCategorias(grupoKey){
     const pcHint = t.pcOptions
       ? ('Pc: ' + t.pcOptions.map(v=> fmt(v,1)+' kVA').join(' · '))
       : (t.pcMin && t.pcMax ? ('Pc: ' + fmt(t.pcMin,1) + ' a ' + fmt(t.pcMax,1) + ' kVA') : 'Pc: livre');
-    const tooltip = `${t.label} — Taxa fixa: ${fmt(t.taxaFixa,2)} Kz/kVA · Tarifa: ${fmt(t.tarifaKwh,2)} Kz/kWh. ${t.descricao}`;
+    const taxaTooltip = t.taxaFixa > 0 ? `Taxa fixa: ${fmt(t.taxaFixa,2)} Kz/kVA · ` : '';
+    const tooltip = `${t.label} — ${taxaTooltip}Tarifa: ${fmt(t.tarifaKwh,2)} Kz/kWh. ${t.descricao}`;
     html += `<button type="button" class="cat-card ${isSelected?'selected':''}" data-cat="${key}" data-tooltip="${escapeHtml(tooltip)}">
       <div class="cat-card-no">${num}</div>
       <div class="cat-card-body">
