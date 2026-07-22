@@ -2693,6 +2693,236 @@ select[data-tooltip] {
   color: var(--orange-deep);
 }
 
+ /* ============================================================
+   SELECÇÃO MÚLTIPLA NO CATÁLOGO
+   ============================================================ */
+.catalog-item { position: relative; }
+.catalog-item.selected {
+  border: 2px solid var(--red);
+  background: linear-gradient(150deg, #fff5f5, var(--mist));
+  box-shadow: 0 4px 14px rgba(200, 16, 46, 0.15);
+}
+.catalog-item .ci-check {
+  margin-left: auto;
+  color: var(--red);
+  font-size: 1.1rem;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: 0.18s var(--ease);
+}
+.catalog-item.selected .ci-check {
+  opacity: 1;
+  transform: scale(1);
+}
+.catalog-item.selected .ci-add {
+  display: none;
+}
+
+/* Rodapé do catálogo com contador + botão Concluir */
+.catalog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--line-soft);
+  margin-top: 10px;
+}
+.catalog-counter {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--slate);
+}
+#btn-concluir-catalogo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+/* ============================================================
+   FORMULÁRIO PERSONALIZADO — CONVERSOR DE UNIDADES
+   ============================================================ */
+
+/* Select principal de unidades (Watts / BTU / A×V / cv) */
+#custom-unit {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line-soft);
+  border-radius: var(--r-s);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23565B64' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: 0.18s var(--ease);
+}
+
+#custom-unit:hover {
+  border-color: var(--orange);
+}
+
+#custom-unit:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.12);
+  outline: none;
+}
+
+/* Linhas de conversão (BTU, A×V, cv) — grid responsivo */
+#conv-btu,
+#conv-av,
+#conv-cv {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 4px;
+  animation: fadeInRow 0.25s var(--ease);
+}
+
+#conv-btu:not(.hidden),
+#conv-av:not(.hidden),
+#conv-cv:not(.hidden) {
+  display: grid;
+}
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Em ecrãs maiores, BTU fica em 2 colunas (valor + tecnologia) */
+@media (min-width: 480px) {
+  #conv-btu {
+    grid-template-columns: 1.4fr 1fr;
+  }
+  #conv-av {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Inputs do conversor */
+#conv-btu-valor,
+#conv-btu-tipo,
+#conv-av-a,
+#conv-av-v,
+#conv-cv-valor {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid var(--line-soft);
+  border-radius: var(--r-s);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--white);
+  transition: 0.18s var(--ease);
+}
+
+#conv-btu-valor:hover,
+#conv-av-a:hover,
+#conv-av-v:hover,
+#conv-cv-valor:hover {
+  border-color: #d0d5dd;
+}
+
+#conv-btu-valor:focus,
+#conv-btu-tipo:focus,
+#conv-av-a:focus,
+#conv-av-v:focus,
+#conv-cv-valor:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px #ffe7cc;
+  outline: none;
+}
+
+/* Select de tecnologia (Convencional / Inverter) */
+#conv-btu-tipo {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23565B64' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+/* Labels dos campos de conversão */
+#conv-btu .form-field label,
+#conv-av .form-field label,
+#conv-cv .form-field label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* Placeholder styling */
+#conv-btu-valor::placeholder,
+#conv-av-a::placeholder,
+#conv-cv-valor::placeholder {
+  color: var(--graphite-2);
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* Nota de resultado da conversão */
+#conv-resultado-nota {
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fff8ee, #fef3e0);
+  border: 1px solid #f1c786;
+  border-radius: var(--r-s);
+  font-size: 0.78rem;
+  color: var(--orange-deep);
+  line-height: 1.45;
+  animation: fadeInRow 0.3s var(--ease);
+}
+
+#conv-resultado-nota strong {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--red);
+  font-size: 0.9rem;
+}
+
+/* Destaque visual quando o conversor está activo */
+#mode-personalizado .form-field:has(#custom-unit) {
+  position: relative;
+}
+
+#mode-personalizado .form-field:has(#custom-unit)::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line-soft);
+  opacity: 0.6;
+}
+
+/* Acessibilidade: reduzir movimento */
+@media (prefers-reduced-motion: reduce) {
+  #conv-btu,
+  #conv-av,
+  #conv-cv,
+  #conv-resultado-nota {
+    animation: none;
+  }
+}
+
 /* ============================================================
    BOTÕES FINAIS — Exportar PDF + Finalizar Simulação
    ============================================================ */

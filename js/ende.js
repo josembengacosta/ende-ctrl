@@ -663,6 +663,7 @@ let sheetMode = 'catalogo';
 let activeCategoryFilter = null;
 let chartConsumo = null;
 let qrGerado = false;
+let selectedCatalogItems = new Set(); // índices do CATALOGO selecionados no sheet
 
 /* Helper: o tipo de cliente já foi escolhido? Usado para o gate de navegação. */
 function clienteSelecionado(){ return !!state.categoria && !!TARIFARIOS[state.categoria]; }
@@ -1601,8 +1602,10 @@ function selecionarTipoCliente(cat){
 function openSheet(){
   overlay.classList.add('open');
   sheet.classList.add('open');
+  selectedCatalogItems.clear();           // limpa selecções de visitas anteriores
   renderCatChips();
   renderCatalog();
+  atualizarFooterCatalogo();              // repõe o contador
   setTimeout(()=> catalogSearch.focus(), 250);
 }
 function closeSheet(){
@@ -1641,6 +1644,10 @@ function renderCatalog(){
     const matchesCat = !activeCategoryFilter || item.categoria === activeCategoryFilter;
     return matchesQuery && matchesCat;
   });
+
+  // sincroniza o rodapé (mesmo que não haja resultados, mostra "0 selecionados")
+  atualizarFooterCatalogo();
+
   if(items.length === 0){
     catalogResults.innerHTML = '<div class="no-results">Nenhum equipamento encontrado.<br>Experimente "Personalizado".</div>';
     return;
@@ -1650,32 +1657,59 @@ function renderCatalog(){
   let html = '';
   Object.keys(groups).forEach(catKey=>{
     html += `<div class="catalog-group-label">${CATEGORIAS[catKey].label}</div>`;
-    groups[catKey].forEach((it, idx)=>{
-      // Tarefa 2: tooltip no item do catálogo — ajuda o visitante a perceber o que vai adicionar
-      const consumo6h = ((it.potencia * 6) / 1000); // estimativa a 6h/dia (horaSugeridas pode variar)
-      const tooltip = `${it.nome} · ${CATEGORIAS[it.categoria].label} — ${it.potencia} W. Sugestão de uso: ${it.horasSugeridas}h/dia (~${fmt(consumo6h,2)} kWh a 6h/dia). Toque para adicionar ao inventário.`;
-      // Usar índice global do CATALOGO em vez do nome (evita problemas com aspas no nome)
+    groups[catKey].forEach((it)=>{
+      const consumo6h = ((it.potencia * 6) / 1000);
+      const tooltip = `${it.nome} · ${CATEGORIAS[it.categoria].label} — ${it.potencia} W. Sugestão: ${it.horasSugeridas}h/dia (~${fmt(consumo6h,2)} kWh a 6h/dia). Toque para selecionar.`;
       const catalogIdx = CATALOGO.findIndex(c => c.nome === it.nome && c.potencia === it.potencia);
-      html += `<button type="button" class="catalog-item" data-catalog-idx="${catalogIdx}" data-tooltip="${escapeHtml(tooltip)}">
+      const isSelected = selectedCatalogItems.has(catalogIdx);
+      html += `<button type="button" class="catalog-item ${isSelected?'selected':''}" data-catalog-idx="${catalogIdx}" data-tooltip="${escapeHtml(tooltip)}">
         <div class="d-icon"><i class="fa-solid ${CATEGORIAS[it.categoria].icon}"></i></div>
         <div><div class="ci-name">${escapeHtml(it.nome)}</div><div class="ci-watt">${it.potencia} W</div></div>
-        <i class="fa-solid fa-circle-plus ci-add"></i></button>`;
+        <i class="fa-solid fa-circle-plus ci-add"></i>
+        <i class="fa-solid fa-circle-check ci-check"></i>
+      </button>`;
     });
   });
   catalogResults.innerHTML = html;
   catalogResults.querySelectorAll('[data-catalog-idx]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const idx = parseInt(btn.getAttribute('data-catalog-idx'), 10);
-      const item = CATALOGO[idx];
-      if(!item) return;
-      state.devices.push(mkDevice(item, 1, item.horasSugeridas));
-      save();
-      renderAll();
-      closeSheet();
+      if(selectedCatalogItems.has(idx)){
+        selectedCatalogItems.delete(idx);
+        btn.classList.remove('selected');
+      } else {
+        selectedCatalogItems.add(idx);
+        btn.classList.add('selected');
+      }
+      atualizarFooterCatalogo();
     });
   });
 }
 catalogSearch.addEventListener('input', renderCatalog);
+
+/* Atualiza o contador e o estado do botão Concluir no rodapé do catálogo */
+function atualizarFooterCatalogo(){
+  const counter = $('catalog-counter');
+  const btn = $('btn-concluir-catalogo');
+  if(!counter || !btn) return;
+  const n = selectedCatalogItems.size;
+  counter.textContent = n === 0
+    ? 'Nenhum equipamento selecionado'
+    : n + ' equipamento' + (n > 1 ? 's' : '') + ' selecionado' + (n > 1 ? 's' : '');
+  btn.disabled = n === 0;
+}
+
+/* Adiciona todos os equipamentos selecionados ao inventário e fecha o sheet */
+function concluirSelecaoCatalogo(){
+  selectedCatalogItems.forEach(idx => {
+    const item = CATALOGO[idx];
+    if(item) state.devices.push(mkDevice(item, 1, item.horasSugeridas));
+  });
+  selectedCatalogItems.clear();
+  save();
+  renderAll();
+  closeSheet();
+}
 
 /* ============================================================
    CONVERSOR DE UNIDADES → WATTS (formulário "Personalizado")
@@ -1763,6 +1797,8 @@ $('btn-add-custom').addEventListener('click', ()=>{
   renderAll();
   closeSheet();
 });
+
+$('btn-concluir-catalogo').addEventListener('click', concluirSelecaoCatalogo);
 
 /* ---------- Tarifário (categoria + Potência Contratada + tarifa editável) ----------
    Nota: a selecção principal de categoria faz-se na tab 0 "Tipo de Cliente".
