@@ -1968,7 +1968,7 @@ async function exportarRelatorioPDF(){
     });
     return;
   }
-
+ 
   // mostra um loader
   Swal.fire({
     title:'A gerar relatório...',
@@ -1976,7 +1976,7 @@ async function exportarRelatorioPDF(){
     allowOutsideClick:false,
     didOpen: ()=> Swal.showLoading()
   });
-
+ 
   try{
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'mm', format:'a4' });
@@ -1984,7 +1984,7 @@ async function exportarRelatorioPDF(){
     const H = 297; // altura A4 em mm
     const M = 14;  // margem
     let y = 0;
-
+ 
         // === CABEÇALHO ===
     // faixa vermelha no topo
     doc.setFillColor(200, 16, 46);
@@ -2024,7 +2024,7 @@ async function exportarRelatorioPDF(){
     });
     doc.text('Emitido em: ' + dataStr, W - M, 28, { align:'right' });
     y = 40;
-
+ 
     // === IDENTIFICAÇÃO DO CLIENTE ===
     doc.setTextColor(11, 21, 32);
     doc.setFont('helvetica', 'bold');
@@ -2034,12 +2034,12 @@ async function exportarRelatorioPDF(){
     doc.setDrawColor(228, 230, 235);
     doc.line(M, y, W - M, y);
     y += 5;
-
+ 
     const catFinalPdf = determinarCategoriaFinal().categoriaFinal;
     const tFinal = TARIFARIOS[catFinalPdf] || {label:'—'};
     const tEscolhidaPdf = TARIFARIOS[state.categoria] || {label:'—'};
     const mudouPdf = state.categoria !== catFinalPdf;
-
+ 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     let linhaCli1 = 'Categoria seleccionada: ' + tEscolhidaPdf.label;
@@ -2050,13 +2050,13 @@ async function exportarRelatorioPDF(){
     doc.text('Categoria final (Smax/Pc): ' + tFinal.label, M, y); y += 5;
     doc.text('Potência Contratada (Pc): ' + fmt(state.pc, 2) + ' kVA', M, y); y += 5;
     doc.text('Taxa Fixa: ' + fmt(tFinal.taxaFixa, 2) + ' Kz/kVA    Tarifa: ' + fmt(tFinal.tarifaKwh, 2) + ' Kz/kWh', M, y); y += 9;
-
+ 
     // === TABELA DE EQUIPAMENTOS ===
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('Equipamentos Simulados', M, y); y += 5;
     doc.line(M, y, W - M, y); y += 5;
-
+ 
     // cabeçalho da tabela
     const colX = [M, M+78, M+100, M+118, M+138, M+160, M+183];
     const colW = [78, 22, 18, 20, 22, 23, 0];
@@ -2068,7 +2068,7 @@ async function exportarRelatorioPDF(){
     doc.setTextColor(86, 91, 100);
     headers.forEach((h, i)=> doc.text(h, colX[i], y));
     y += 7;
-
+ 
     // linhas dos equipamentos
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(11, 21, 32);
@@ -2094,11 +2094,11 @@ async function exportarRelatorioPDF(){
       doc.text(String(d.quantidade), colX[2], y);
       doc.text(fmt(d.horas, 1) + ' h', colX[3], y);
       doc.text(fmt(kwh, 3), colX[4], y);
-      doc.text(fmt(kz, 0) + ' Kz', colX[5], y);
+      doc.text(fmt(kz, 2) + ' Kz', colX[5], y);
       y += 6.5;
     });
     y += 4;
-
+ 
     // === RESUMO ===
     if(y > H - 60){
       doc.addPage();
@@ -2108,7 +2108,7 @@ async function exportarRelatorioPDF(){
     doc.setFontSize(11);
     doc.text('Resumo do Consumo e Custo', M, y); y += 5;
     doc.line(M, y, W - M, y); y += 6;
-
+ 
     const t = totals();
     // 2 colunas: esquerda = consumo, direita = custo
     doc.setFont('helvetica', 'bold');
@@ -2117,7 +2117,7 @@ async function exportarRelatorioPDF(){
     doc.text('CONSUMO', M, y);
     doc.text('CUSTO ESTIMADO', W/2 + 5, y);
     y += 6;
-
+ 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(11, 21, 32);
@@ -2132,7 +2132,7 @@ async function exportarRelatorioPDF(){
     doc.setTextColor(11, 21, 32);
     doc.setFont('helvetica', 'normal');
     y += 6;
-
+ 
     // nota sobre o IVA (quebra em linhas para não ultrapassar a margem)
     doc.setFontSize(7.5);
     doc.setTextColor(138, 143, 152);
@@ -2140,7 +2140,7 @@ async function exportarRelatorioPDF(){
     const disclaimerLinhas = doc.splitTextToSize(disclaimerTxt, W - 2*M);
     disclaimerLinhas.forEach(linha=>{ doc.text(linha, M, y); y += 3.5; });
     y += 3;
-
+ 
     // === GRÁFICO ===
     if(y > H - 80){
       doc.addPage();
@@ -2151,7 +2151,7 @@ async function exportarRelatorioPDF(){
     doc.setTextColor(11, 21, 32);
     doc.text('Distribuição do Consumo', M, y); y += 5;
     doc.line(M, y, W - M, y); y += 6;
-
+ 
     // capturar o canvas do Chart.js como imagem
     const canvas = document.getElementById('grafico-consumo');
     if(canvas && typeof html2canvas !== 'undefined'){
@@ -2175,7 +2175,7 @@ async function exportarRelatorioPDF(){
         y += 6;
       }
     }
-
+ 
     // === MAIORES CONSUMIDORES ===
     if(y > H - 50){
       doc.addPage();
@@ -2196,7 +2196,7 @@ async function exportarRelatorioPDF(){
       y += 5;
     });
     y += 4;
-
+ 
     // === CONSELHO DO TÉCNICO ===
     if(state.advice && state.advice.trim()){
       if(y > H - 40){
@@ -2218,7 +2218,7 @@ async function exportarRelatorioPDF(){
       });
       y += 4;
     }
-
+ 
     // === RODAPÉ ===
     const totalPaginas = doc.internal.getNumberOfPages();
     for(let p = 1; p <= totalPaginas; p++){
@@ -2232,11 +2232,11 @@ async function exportarRelatorioPDF(){
       doc.text('ENDE · FILDA 2026 — Simulador de Literacia Energética', M, H - 7);
       doc.text('Página ' + p + ' de ' + totalPaginas, W - M, H - 7, { align:'right' });
     }
-
+ 
     // === GUARDAR ===
     const nomeFicheiro = 'ENDE_Simulador_' + agora.toISOString().slice(0,10) + '.pdf';
     doc.save(nomeFicheiro);
-
+ 
     Swal.close();
     // feedback de sucesso
     Swal.fire({
@@ -2257,7 +2257,7 @@ async function exportarRelatorioPDF(){
     });
   }
 }
-
+ 
 $('btn-exportar-pdf').addEventListener('click', exportarRelatorioPDF);
 
 /* ============================================================
