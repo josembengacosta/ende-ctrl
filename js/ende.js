@@ -1890,6 +1890,15 @@ if(btnTrocarCat){
 $('btn-anomaly').addEventListener('click', ()=>{
   const dev = state.devices.find(d=> d.id === anomalySelect.value);
   if(!dev){ anomalyResult.classList.remove('show'); return; }
+  // Aparelho já a 24h/dia (ex.: Router Wi-Fi, Frigorífico, Câmara de
+  // Vigilância): não há "esquecimento" possível de simular, a diferença
+  // seria sempre 0 — mostrar um aviso claro em vez de "0 Kz/mês" (que
+  // parece erro, não é).
+  if(dev.horas >= 24){
+    anomalyResult.innerHTML = `<strong>${escapeHtml(dev.nome)}</strong> já está configurado para ficar ligado <strong>24h/dia</strong> — não há desperdício extra possível de simular, porque já está sempre ligado.`;
+    anomalyResult.classList.add('show');
+    return;
+  }
   const normalKwhMes = dailyKwh(dev) * 30;
   const anomKwhDia = (dev.potencia * dev.quantidade * 24) / 1000;
   const anomKwhMes = anomKwhDia * 30;
