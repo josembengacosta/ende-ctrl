@@ -663,7 +663,6 @@ let sheetMode = 'catalogo';
 let activeCategoryFilter = null;
 let chartConsumo = null;
 let qrGerado = false;
-let selectedCatalogItems = new Set(); // índices do CATALOGO selecionados no sheet
 
 /* Helper: o tipo de cliente já foi escolhido? Usado para o gate de navegação. */
 function clienteSelecionado(){ return !!state.categoria && !!TARIFARIOS[state.categoria]; }
@@ -1359,6 +1358,7 @@ function renderResults(){
 
   const sorted = [...state.devices].sort((a,b)=> dailyKwh(b) - dailyKwh(a));
   const top = sorted[0];
+  $('top-consumer-sub').textContent = top ? `Maior consumidor: ${top.nome}` : '—';
 
   const maxKwh = sorted.length ? dailyKwh(sorted[0]) : 1;
   $('breakdown-list').innerHTML = sorted.map((d,i)=>{
@@ -1633,10 +1633,8 @@ function selecionarTipoCliente(cat){
 function openSheet(){
   overlay.classList.add('open');
   sheet.classList.add('open');
-  selectedCatalogItems.clear();           // limpa selecções de visitas anteriores
   renderCatChips();
   renderCatalog();
-  atualizarFooterCatalogo();              // repõe o contador
   setTimeout(()=> catalogSearch.focus(), 250);
 }
 function closeSheet(){
@@ -1675,10 +1673,6 @@ function renderCatalog(){
     const matchesCat = !activeCategoryFilter || item.categoria === activeCategoryFilter;
     return matchesQuery && matchesCat;
   });
-
-  // sincroniza o rodapé (mesmo que não haja resultados, mostra "0 selecionados")
-  atualizarFooterCatalogo();
-
   if(items.length === 0){
     catalogResults.innerHTML = '<div class="no-results">Nenhum equipamento encontrado.<br>Experimente "Personalizado".</div>';
     return;
@@ -1688,59 +1682,32 @@ function renderCatalog(){
   let html = '';
   Object.keys(groups).forEach(catKey=>{
     html += `<div class="catalog-group-label">${CATEGORIAS[catKey].label}</div>`;
-    groups[catKey].forEach((it)=>{
-      const consumo6h = ((it.potencia * 6) / 1000);
-      const tooltip = `${it.nome} · ${CATEGORIAS[it.categoria].label} — ${it.potencia} W. Sugestão: ${it.horasSugeridas}h/dia (~${fmt(consumo6h,2)} kWh a 6h/dia). Toque para selecionar.`;
+    groups[catKey].forEach((it, idx)=>{
+      // Tarefa 2: tooltip no item do catálogo — ajuda o visitante a perceber o que vai adicionar
+      const consumo6h = ((it.potencia * 6) / 1000); // estimativa a 6h/dia (horaSugeridas pode variar)
+      const tooltip = `${it.nome} · ${CATEGORIAS[it.categoria].label} — ${it.potencia} W. Sugestão de uso: ${it.horasSugeridas}h/dia (~${fmt(consumo6h,2)} kWh a 6h/dia). Toque para adicionar ao inventário.`;
+      // Usar índice global do CATALOGO em vez do nome (evita problemas com aspas no nome)
       const catalogIdx = CATALOGO.findIndex(c => c.nome === it.nome && c.potencia === it.potencia);
-      const isSelected = selectedCatalogItems.has(catalogIdx);
-      html += `<button type="button" class="catalog-item ${isSelected?'selected':''}" data-catalog-idx="${catalogIdx}" data-tooltip="${escapeHtml(tooltip)}">
+      html += `<button type="button" class="catalog-item" data-catalog-idx="${catalogIdx}" data-tooltip="${escapeHtml(tooltip)}">
         <div class="d-icon"><i class="fa-solid ${CATEGORIAS[it.categoria].icon}"></i></div>
         <div><div class="ci-name">${escapeHtml(it.nome)}</div><div class="ci-watt">${it.potencia} W</div></div>
-        <i class="fa-solid fa-circle-plus ci-add"></i>
-        <i class="fa-solid fa-circle-check ci-check"></i>
-      </button>`;
+        <i class="fa-solid fa-circle-plus ci-add"></i></button>`;
     });
   });
   catalogResults.innerHTML = html;
   catalogResults.querySelectorAll('[data-catalog-idx]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const idx = parseInt(btn.getAttribute('data-catalog-idx'), 10);
-      if(selectedCatalogItems.has(idx)){
-        selectedCatalogItems.delete(idx);
-        btn.classList.remove('selected');
-      } else {
-        selectedCatalogItems.add(idx);
-        btn.classList.add('selected');
-      }
-      atualizarFooterCatalogo();
+      const item = CATALOGO[idx];
+      if(!item) return;
+      state.devices.push(mkDevice(item, 1, item.horasSugeridas));
+      save();
+      renderAll();
+      closeSheet();
     });
   });
 }
 catalogSearch.addEventListener('input', renderCatalog);
-
-/* Atualiza o contador e o estado do botão Concluir no rodapé do catálogo */
-function atualizarFooterCatalogo(){
-  const counter = $('catalog-counter');
-  const btn = $('btn-concluir-catalogo');
-  if(!counter || !btn) return;
-  const n = selectedCatalogItems.size;
-  counter.textContent = n === 0
-    ? 'Nenhum equipamento selecionado'
-    : n + ' equipamento' + (n > 1 ? 's' : '') + ' selecionado' + (n > 1 ? 's' : '');
-  btn.disabled = n === 0;
-}
-
-/* Adiciona todos os equipamentos selecionados ao inventário e fecha o sheet */
-function concluirSelecaoCatalogo(){
-  selectedCatalogItems.forEach(idx => {
-    const item = CATALOGO[idx];
-    if(item) state.devices.push(mkDevice(item, 1, item.horasSugeridas));
-  });
-  selectedCatalogItems.clear();
-  save();
-  renderAll();
-  closeSheet();
-}
 
 /* ============================================================
    CONVERSOR DE UNIDADES → WATTS (formulário "Personalizado")
@@ -1828,8 +1795,6 @@ $('btn-add-custom').addEventListener('click', ()=>{
   renderAll();
   closeSheet();
 });
-
-$('btn-concluir-catalogo').addEventListener('click', concluirSelecaoCatalogo);
 
 /* ---------- Tarifário (categoria + Potência Contratada + tarifa editável) ----------
    Nota: a selecção principal de categoria faz-se na tab 0 "Tipo de Cliente".
@@ -2000,7 +1965,7 @@ async function exportarRelatorioPDF(){
     });
     return;
   }
- 
+
   // mostra um loader
   Swal.fire({
     title:'A gerar relatório...',
@@ -2008,7 +1973,7 @@ async function exportarRelatorioPDF(){
     allowOutsideClick:false,
     didOpen: ()=> Swal.showLoading()
   });
- 
+
   try{
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'mm', format:'a4' });
@@ -2016,7 +1981,7 @@ async function exportarRelatorioPDF(){
     const H = 297; // altura A4 em mm
     const M = 14;  // margem
     let y = 0;
- 
+
         // === CABEÇALHO ===
     // faixa vermelha no topo
     doc.setFillColor(200, 16, 46);
@@ -2056,7 +2021,7 @@ async function exportarRelatorioPDF(){
     });
     doc.text('Emitido em: ' + dataStr, W - M, 28, { align:'right' });
     y = 40;
- 
+
     // === IDENTIFICAÇÃO DO CLIENTE ===
     doc.setTextColor(11, 21, 32);
     doc.setFont('helvetica', 'bold');
@@ -2066,12 +2031,12 @@ async function exportarRelatorioPDF(){
     doc.setDrawColor(228, 230, 235);
     doc.line(M, y, W - M, y);
     y += 5;
- 
+
     const catFinalPdf = determinarCategoriaFinal().categoriaFinal;
     const tFinal = TARIFARIOS[catFinalPdf] || {label:'—'};
     const tEscolhidaPdf = TARIFARIOS[state.categoria] || {label:'—'};
     const mudouPdf = state.categoria !== catFinalPdf;
- 
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     let linhaCli1 = 'Categoria seleccionada: ' + tEscolhidaPdf.label;
@@ -2082,13 +2047,13 @@ async function exportarRelatorioPDF(){
     doc.text('Categoria final (Smax/Pc): ' + tFinal.label, M, y); y += 5;
     doc.text('Potência Contratada (Pc): ' + fmt(state.pc, 2) + ' kVA', M, y); y += 5;
     doc.text('Taxa Fixa: ' + fmt(tFinal.taxaFixa, 2) + ' Kz/kVA    Tarifa: ' + fmt(tFinal.tarifaKwh, 2) + ' Kz/kWh', M, y); y += 9;
- 
+
     // === TABELA DE EQUIPAMENTOS ===
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('Equipamentos Simulados', M, y); y += 5;
     doc.line(M, y, W - M, y); y += 5;
- 
+
     // cabeçalho da tabela
     const colX = [M, M+78, M+100, M+118, M+138, M+160, M+183];
     const colW = [78, 22, 18, 20, 22, 23, 0];
@@ -2100,7 +2065,7 @@ async function exportarRelatorioPDF(){
     doc.setTextColor(86, 91, 100);
     headers.forEach((h, i)=> doc.text(h, colX[i], y));
     y += 7;
- 
+
     // linhas dos equipamentos
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(11, 21, 32);
@@ -2130,7 +2095,7 @@ async function exportarRelatorioPDF(){
       y += 6.5;
     });
     y += 4;
- 
+
     // === RESUMO ===
     if(y > H - 60){
       doc.addPage();
@@ -2140,7 +2105,7 @@ async function exportarRelatorioPDF(){
     doc.setFontSize(11);
     doc.text('Resumo do Consumo e Custo', M, y); y += 5;
     doc.line(M, y, W - M, y); y += 6;
- 
+
     const t = totals();
     // 2 colunas: esquerda = consumo, direita = custo
     doc.setFont('helvetica', 'bold');
@@ -2149,7 +2114,7 @@ async function exportarRelatorioPDF(){
     doc.text('CONSUMO', M, y);
     doc.text('CUSTO ESTIMADO', W/2 + 5, y);
     y += 6;
- 
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(11, 21, 32);
@@ -2164,7 +2129,7 @@ async function exportarRelatorioPDF(){
     doc.setTextColor(11, 21, 32);
     doc.setFont('helvetica', 'normal');
     y += 6;
- 
+
     // nota sobre o IVA (quebra em linhas para não ultrapassar a margem)
     doc.setFontSize(7.5);
     doc.setTextColor(138, 143, 152);
@@ -2172,7 +2137,7 @@ async function exportarRelatorioPDF(){
     const disclaimerLinhas = doc.splitTextToSize(disclaimerTxt, W - 2*M);
     disclaimerLinhas.forEach(linha=>{ doc.text(linha, M, y); y += 3.5; });
     y += 3;
- 
+
     // === GRÁFICO ===
     if(y > H - 80){
       doc.addPage();
@@ -2183,7 +2148,7 @@ async function exportarRelatorioPDF(){
     doc.setTextColor(11, 21, 32);
     doc.text('Distribuição do Consumo', M, y); y += 5;
     doc.line(M, y, W - M, y); y += 6;
- 
+
     // capturar o canvas do Chart.js como imagem
     const canvas = document.getElementById('grafico-consumo');
     if(canvas && typeof html2canvas !== 'undefined'){
@@ -2207,7 +2172,7 @@ async function exportarRelatorioPDF(){
         y += 6;
       }
     }
- 
+
     // === MAIORES CONSUMIDORES ===
     if(y > H - 50){
       doc.addPage();
@@ -2228,7 +2193,7 @@ async function exportarRelatorioPDF(){
       y += 5;
     });
     y += 4;
- 
+
     // === CONSELHO DO TÉCNICO ===
     if(state.advice && state.advice.trim()){
       if(y > H - 40){
@@ -2250,7 +2215,7 @@ async function exportarRelatorioPDF(){
       });
       y += 4;
     }
- 
+
     // === RODAPÉ ===
     const totalPaginas = doc.internal.getNumberOfPages();
     for(let p = 1; p <= totalPaginas; p++){
@@ -2264,11 +2229,11 @@ async function exportarRelatorioPDF(){
       doc.text('ENDE · FILDA 2026 — Simulador de Literacia Energética', M, H - 7);
       doc.text('Página ' + p + ' de ' + totalPaginas, W - M, H - 7, { align:'right' });
     }
- 
+
     // === GUARDAR ===
     const nomeFicheiro = 'ENDE_Simulador_' + agora.toISOString().slice(0,10) + '.pdf';
     doc.save(nomeFicheiro);
- 
+
     Swal.close();
     // feedback de sucesso
     Swal.fire({
@@ -2289,7 +2254,7 @@ async function exportarRelatorioPDF(){
     });
   }
 }
- 
+
 $('btn-exportar-pdf').addEventListener('click', exportarRelatorioPDF);
 
 /* ============================================================
