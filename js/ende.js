@@ -1327,7 +1327,6 @@ function renderResults(){
 
   const sorted = [...state.devices].sort((a,b)=> dailyKwh(b) - dailyKwh(a));
   const top = sorted[0];
-  $('top-consumer-sub').textContent = top ? `Maior consumidor: ${top.nome}` : '—';
 
   const maxKwh = sorted.length ? dailyKwh(sorted[0]) : 1;
   $('breakdown-list').innerHTML = sorted.map((d,i)=>{
